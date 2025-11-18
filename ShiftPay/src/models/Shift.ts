@@ -58,7 +58,7 @@ export default class Shift {
 
     const unpaidBreaks = rawBreaks
       .map((ub: any) => (ub instanceof Duration ? ub : new Duration(ub)))
-      .filter((ub: Duration) => (ub.hours + ub.minutes) > 0);
+      .filter((ub: Duration) => ub.hours + ub.minutes > 0);
 
     return new Shift({
       id,
@@ -142,17 +142,15 @@ export default class Shift {
     );
   }
 
-  get billableDuration(): Duration | undefined {
+  get billableDuration(): Duration {
     const workedMin = this.duration.hours * 60 + this.duration.minutes;
     const breakMin = this.totalBreakDuration.hours * 60 + this.totalBreakDuration.minutes;
     const billable = workedMin - breakMin;
-    if (billable < 0) return;
     return new Duration({ minutes: billable });
   }
 
-  get income(): number | undefined {
+  get income(): number {
     const billable = this.billableDuration;
-    if (!billable) return;
     return this.payRate * (billable.hours + billable.minutes / 60);
   }
 

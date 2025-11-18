@@ -85,6 +85,15 @@ export default {
           new Duration({ hours: 0, minutes: 0 })
         );
 
+        week.summaries.totalBillableHours = shifts.reduce(
+          (acc, shift) => {
+            acc.hours += shift.billableDuration.hours;
+            acc.minutes += shift.billableDuration.minutes;
+            return acc;
+          },
+          new Duration({ hours: 0, minutes: 0 })
+        );
+
         // Create the days of the week
         for (let i = 0; i < 7; i++) {
           const isPrevMonth = currentDate.getMonth() < firstDayOfMonth.getMonth();
@@ -139,6 +148,8 @@ export default {
           return currencyFormat(week.summaries.income);
         case 'totalHours':
           return week.summaries.totalHours.format();
+        case 'totalBillableHours':
+          return week.summaries.totalBillableHours.format();
         default:
           return '';
       }
@@ -214,6 +225,7 @@ export default {
         <select v-model="selectedWeekSummaryOption" class="week-summary-options">
           <option value="income" selected>Income</option>
           <option value="totalHours">Hours</option>
+          <option value="totalBillableHours">Billable</option>
         </select>
 
         <div class="summary" v-for="(week, weekIndex) in calendar" :key="weekIndex">

@@ -16,5 +16,6 @@ export type Week = {
   summaries: {
     income: number;
     totalHours: Duration;
+    totalBillableHours: Duration;
   };
 };
