@@ -171,7 +171,7 @@ export default {
   flex-direction: row;
   align-items: center;
   gap: var(--gap-horizontal);
-  margin-bottom: var(--padding);
+  margin: var(--padding-small) 0;
 }
 
 .actions>* {
