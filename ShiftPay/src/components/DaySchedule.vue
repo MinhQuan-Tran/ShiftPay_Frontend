@@ -3,7 +3,7 @@ import Shift from '@/models/Shift';
 import { currencyFormat, toTimeStr } from '@/utils';
 
 import { mapStores } from 'pinia';
-import { useShiftsStore } from '@/stores/shiftStore';
+import { useShiftsStore } from '@/stores/shiftsStore';
 import { useShiftSessionStore } from '@/stores/shiftSessionStore';
 
 import DayScheduleShift from '@/components/DayScheduleShiftCard.vue';

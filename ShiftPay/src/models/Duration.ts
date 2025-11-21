@@ -2,11 +2,21 @@ export default class Duration {
   private _hours?: number;
   private _minutes?: number;
 
+  static add(a: Duration, b: Duration): Duration {
+    return new Duration({ hours: a.hours + b.hours, minutes: a.minutes + b.minutes });
+  }
+
   constructor(
     props?:
-      | { _hours?: number; _minutes?: number; hours?: number; minutes?: number; startTime?: Date; endTime?: Date }
       | string
+      | { _hours?: number; _minutes?: number; hours?: number; minutes?: number; startTime?: Date; endTime?: Date }
   ) {
+    if (!props) {
+      this.hours = 0;
+      this.minutes = 0;
+      return;
+    }
+
     if (typeof props === 'string') {
       const parts = props.split(':').map((part) => part.trim());
 
@@ -85,6 +95,18 @@ export default class Duration {
     this._hours ??= 0;
     this._hours += Math.floor(Number(minutes) / 60);
     this._minutes = Number(minutes) % 60;
+  }
+
+  add(other: Duration): Duration {
+    const newDuration = new Duration({
+      hours: this.hours + other.hours,
+      minutes: this.minutes + other.minutes
+    });
+
+    this._hours = newDuration.hours;
+    this._minutes = newDuration.minutes;
+
+    return newDuration;
   }
 
   format(style: string = 'narrow', hoursDisplay: string = 'auto'): string {

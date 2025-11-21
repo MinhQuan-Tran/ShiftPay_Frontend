@@ -4,9 +4,9 @@ import Duration from '@/models/Duration';
 import { deepClone } from '@/utils';
 
 import { mapStores } from 'pinia';
-import { useShiftsStore } from '@/stores/shiftStore';
-import { useWorkInfosStore } from '@/stores/workInfoStore';
-import { useShiftTemplatesStore } from '@/stores/shiftTemplateStore';
+import { useShiftsStore } from '@/stores/shiftsStore';
+import { useWorkInfosStore } from '@/stores/workInfosStore';
+import { useShiftTemplatesStore } from '@/stores/shiftTemplatesStore';
 import { useShiftSessionStore } from '@/stores/shiftSessionStore';
 
 import ButtonConfirm from './ButtonConfirm.vue';

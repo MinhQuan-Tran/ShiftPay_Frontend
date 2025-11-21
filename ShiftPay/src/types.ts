@@ -11,11 +11,18 @@ export type Day = {
   nextMonth: boolean; // Is this the day from the next month?
 };
 
-export type Week = {
-  days: Day[];
-  summaries: {
-    income: number;
-    totalHours: Duration;
-    totalBillableHours: Duration;
-  };
-};
+// export type Week = {
+//   days: Day[];
+//   stats: {
+//     income: {
+//       beforeTax: number;
+//       afterTax: number;
+//     };
+//     time: {
+//       totalHours: Duration;
+//       totalBillableHours: Duration;
+//     };
+//   };
+// };
+
+// export const WeekStatisticCategory = {

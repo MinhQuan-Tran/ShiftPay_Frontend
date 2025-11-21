@@ -122,6 +122,7 @@ export default class Shift {
     return this._unpaidBreaks;
   }
 
+  // Including unpaid breaks
   get duration(): Duration {
     const ms = this.endTime.getTime() - this.startTime.getTime();
     const hours = Math.floor(ms / (1000 * 60 * 60));

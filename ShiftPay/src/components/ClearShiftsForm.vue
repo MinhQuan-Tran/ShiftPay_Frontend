@@ -3,7 +3,7 @@ import { mapStores } from 'pinia';
 
 import ButtonConfirm from './ButtonConfirm.vue';
 
-import { useShiftsStore } from '@/stores/shiftStore';
+import { useShiftsStore } from '@/stores/shiftsStore';
 
 export default {
   props: {

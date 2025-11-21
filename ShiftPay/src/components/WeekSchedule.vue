@@ -1,11 +1,10 @@
 <script lang="ts">
-import Duration from '@/models/Duration';
-import type { Week, Day } from '@/types';
+import type { Day } from '@/types';
 import { currencyFormat } from '@/utils';
 
 import { mapStores } from 'pinia';
 
-import { useShiftsStore } from '@/stores/shiftStore';
+import { useShiftsStore, STAT_OPTIONS } from '@/stores/shiftsStore';
 
 export default {
   props: {
@@ -26,12 +25,19 @@ export default {
       today,
       monthChange: 0,
       spaceBetweenDay: '0px',
-      selectedWeekSummaryOption: 'income'
+      selectedStatOption: 'income' as keyof typeof STAT_OPTIONS,
+      // type as the union of all subcategory keys across STAT_OPTIONS
+      selectedSubcategoryOption: 'beforeTax' as keyof (typeof STAT_OPTIONS)[keyof typeof STAT_OPTIONS],
+      STAT_OPTIONS
     };
   },
 
   computed: {
     ...mapStores(useShiftsStore),
+
+    statSubcategoryOptions() {
+      return this.STAT_OPTIONS[this.selectedStatOption];
+    },
 
     calendar() {
       const changedDate = new Date(this.today);
@@ -39,88 +45,72 @@ export default {
 
       const firstDayOfMonth = new Date(changedDate.getFullYear(), changedDate.getMonth(), 1, 0, 0, 0, 0);
       const lastDayOfMonth = new Date(firstDayOfMonth.getFullYear(), firstDayOfMonth.getMonth() + 1, 0, 0, 0, 0, 0);
-      const firstDayOfWeek = firstDayOfMonth.getDay();
+      const dayOfWeek = firstDayOfMonth.getDay();
 
-      let currentDate = new Date(firstDayOfMonth);
+      const firstDateInCalendar = new Date(firstDayOfMonth);
 
-      // Set the currentDate to the first day of the week (Monday)
+      // Set the firstDateInCalendar to the first day of the week (Monday)
       // e.g. if the first day of the month is on Friday 1 December 2023,
       // then the first day of the week is 1 December 2023 - 5 days = Sunday 26 November 2023
       // Sunday 26 November 2023 + 1 day = Monday 27 November 2023
-      currentDate.setDate(currentDate.getDate() - firstDayOfWeek + 1);
-      currentDate.setHours(0, 0, 0, 0);
+      firstDateInCalendar.setDate(firstDateInCalendar.getDate() - dayOfWeek + 1);
+
+      // Set the lastDateInCalendar to the last day of the week (Sunday)
+      // e.g. if the last day of the month is on Wednesday 31 January 2024,
+      // then the last day of the week is 31 January 2024 + 4 days = Sunday 4 February 2024
+      const lastDateInCalendar = new Date(lastDayOfMonth);
+      lastDateInCalendar.setDate(lastDateInCalendar.getDate() + (7 - lastDateInCalendar.getDay()) % 7);
 
       const calendar = [];
-      while (currentDate <= lastDayOfMonth) {
-        const week = {
-          days: [] as Day[],
-          summaries: {
-            income: 0,
-            totalHours: {
-              hours: 0,
-              minutes: 0
-            } as Duration
-          }
-        } as Week;
+      for (
+        const currentDate = new Date(firstDateInCalendar);
+        currentDate <= lastDateInCalendar;
+        currentDate.setDate(currentDate.getDate() + 1)
+      ) {
+        const isPrevMonth = currentDate.getMonth() < firstDayOfMonth.getMonth();
+        const isNextMonth = currentDate.getMonth() > firstDayOfMonth.getMonth();
 
-        // from 12am on Monday
-        const startTime = new Date(currentDate);
-        startTime.setHours(0, 0, 0, 0);
+        const dayStartTime = new Date(currentDate); // 12am on the current day
+        const dayEndTime = new Date(currentDate); // 12am on the next day
+        dayEndTime.setDate(dayEndTime.getDate() + 1);
 
-        // to 12am on the next Monday
-        const endTime = new Date(currentDate);
-        endTime.setDate(endTime.getDate() + 7);
-        endTime.setHours(0, 0, 0, 0);
-
-        const shifts = this.shiftsStore.range(startTime, endTime);
-
-        week.summaries.income += shifts.reduce((acc, shift) => (acc += shift.income ?? 0), 0);
-
-        week.summaries.totalHours = shifts.reduce(
-          (acc, shift) => {
-            acc.hours += shift.duration.hours;
-            acc.minutes += shift.duration.minutes;
-            return acc;
-          },
-          new Duration({ hours: 0, minutes: 0 })
-        );
-
-        week.summaries.totalBillableHours = shifts.reduce(
-          (acc, shift) => {
-            acc.hours += shift.billableDuration.hours;
-            acc.minutes += shift.billableDuration.minutes;
-            return acc;
-          },
-          new Duration({ hours: 0, minutes: 0 })
-        );
-
-        // Create the days of the week
-        for (let i = 0; i < 7; i++) {
-          const isPrevMonth = currentDate.getMonth() < firstDayOfMonth.getMonth();
-          const isNextMonth = currentDate.getMonth() > firstDayOfMonth.getMonth();
-
-          const dayStartTime = new Date(currentDate); // 12am on the current day
-          const dayEndTime = new Date(currentDate); // 12am on the next day
-          dayEndTime.setDate(dayEndTime.getDate() + 1);
-
-          week.days.push({
-            dayStartTime: dayStartTime,
-            dayEndTime: dayEndTime,
-            prevMonth: isPrevMonth,
-            nextMonth: isNextMonth
-          } as Day);
-
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-
-        // Round the total to 2 decimal places
-        week.summaries.income = Math.round(week.summaries.income * 100) / 100;
-
-        calendar.push(week);
+        calendar.push({
+          dayStartTime: dayStartTime,
+          dayEndTime: dayEndTime,
+          prevMonth: isPrevMonth,
+          nextMonth: isNextMonth
+        } as Day);
       }
 
       return calendar;
-    }
+    },
+
+    weeks() {
+      if (!Array.isArray(this.calendar) || this.calendar.length === 0) return [];
+
+      const weeks: Array<{ start: Date; end: Date; stats: any; }> = [];
+      let cursorIndex = 0;
+      while (cursorIndex < this.calendar.length) {
+        const weekStartDay = this.calendar[cursorIndex];
+        const start = new Date(weekStartDay.dayStartTime);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 7); // exclusive end
+
+        // Gather stats using store getter
+        const stats = this.shiftsStore.stats(start, end);
+        weeks.push({ start, end, stats });
+
+        // Advance cursor to next Monday (skip remaining days of current week)
+        cursorIndex++;
+        while (cursorIndex < this.calendar.length) {
+          const d = this.calendar[cursorIndex].dayStartTime.getDay();
+          if (d === 1) break; // Monday
+          cursorIndex++;
+        }
+      }
+      return weeks;
+    },
   },
 
   methods: {
@@ -142,17 +132,31 @@ export default {
       this.updateTitleByMonth();
     },
 
-    weekSummary(week: Week) {
-      switch (this.selectedWeekSummaryOption) {
+    formatStat(stats: any) {
+      const category = this.selectedStatOption;
+      const sub = this.selectedSubcategoryOption;
+
+      switch (category) {
         case 'income':
-          return currencyFormat(week.summaries.income);
-        case 'totalHours':
-          return week.summaries.totalHours.format();
-        case 'totalBillableHours':
-          return week.summaries.totalBillableHours.format();
+          return this.currencyFormat(stats.income.beforeTax);
+
+        case 'hours': {
+          const duration = stats.hours[sub];
+          if (duration && typeof duration.format === 'function') {
+            return duration.format();
+          }
+          return String(duration);
+        }
+
         default:
           return '';
       }
+    }
+  },
+
+  watch: {
+    selectedStatOption(newVal: keyof typeof STAT_OPTIONS) {
+      this.selectedSubcategoryOption = Object.keys(this.STAT_OPTIONS[newVal])[0] as keyof (typeof STAT_OPTIONS)[keyof typeof STAT_OPTIONS];
     }
   },
 
@@ -176,7 +180,7 @@ export default {
 
 <template>
   <div class="week-schedule">
-    <div class="title">
+    <div class="month-nav">
       <button class="prev-btn" @click="goToPrevMonth">
         <img src="@/components/icons/next.svg" alt="prev" />
       </button>
@@ -186,65 +190,72 @@ export default {
       </button>
     </div>
 
-    <div class="calendar-summaries">
-      <div class="calendar">
-        <div class="week-day" v-for="day in weekDays" :key="day">{{ day }}</div>
+    <div class="weekdays">
+      <div class="week-day" v-for="day in weekDays" :key="day">{{ day }}</div>
+    </div>
 
-        <template v-for="(week, weekIndex) in calendar" :key="weekIndex">
-          <div v-for="(day, dayIndex) in week.days" :key="dayIndex"
-            @click="$emit('update:selectedDate', day.dayStartTime)" :class="[
-              'day-container',
-              {
-                // Compare the dates only
-                selected: selectedDate && selectedDate.getTime() === day.dayStartTime.getTime(),
-                'has-shift':
-                  shiftsStore.range(day.dayStartTime, day.dayEndTime).length > 0,
-                'has-shift-past':
-                  shiftsStore.range(day.dayStartTime, day.dayEndTime)
-                    .some((shift) => new Date(shift.startTime) < day.dayStartTime),
-                'has-shift-future':
-                  shiftsStore.range(day.dayStartTime, day.dayEndTime)
-                    .some((shift) => day.dayEndTime < new Date(shift.endTime))
-              }
-            ]">
-            <div :class="[
-              'day',
-              {
-                today: day.dayStartTime.getTime() === new Date(new Date().setHours(0, 0, 0, 0)).getTime(),
-                'prev-month': day.prevMonth,
-                'next-month': day.nextMonth
-              }
-            ]">
-              {{ day.dayStartTime.getDate() }}
-            </div>
-          </div>
-        </template>
-      </div>
-
-      <div class="summaries">
-        <select v-model="selectedWeekSummaryOption" class="week-summary-options">
-          <option value="income" selected>Income</option>
-          <option value="totalHours">Hours</option>
-          <option value="totalBillableHours">Billable</option>
-        </select>
-
-        <div class="summary" v-for="(week, weekIndex) in calendar" :key="weekIndex">
-          <span>{{ weekSummary(week) }}</span>
+    <div class="calendar">
+      <div v-for="(day, dayIndex) in calendar" :key="dayIndex" @click="$emit('update:selectedDate', day.dayStartTime)"
+        :class="[
+          'day-container',
+          {
+            // Compare the dates only
+            selected: selectedDate && selectedDate.getTime() === day.dayStartTime.getTime(),
+            'has-shift':
+              shiftsStore.range(day.dayStartTime, day.dayEndTime).length > 0,
+            'has-shift-past':
+              shiftsStore.range(day.dayStartTime, day.dayEndTime)
+                .some((shift) => new Date(shift.startTime) < day.dayStartTime),
+            'has-shift-future':
+              shiftsStore.range(day.dayStartTime, day.dayEndTime)
+                .some((shift) => day.dayEndTime < new Date(shift.endTime))
+          }
+        ]">
+        <div :class="[
+          'day',
+          {
+            today: day.dayStartTime.getTime() === new Date(new Date().setHours(0, 0, 0, 0)).getTime(),
+            'prev-month': day.prevMonth,
+            'next-month': day.nextMonth
+          }
+        ]">
+          {{ day.dayStartTime.getDate() }}
         </div>
       </div>
+    </div>
+
+    <select v-model="selectedStatOption" class="category">
+      <option v-for="(_, category) in STAT_OPTIONS" :key="category" :value="category">{{ category }}</option>
+    </select>
+
+    <select v-model="selectedSubcategoryOption" class="subcategory">
+      <option v-for="(subcat, index) in statSubcategoryOptions" :key="index" :value="index">
+        {{ (subcat as any).label }}
+      </option>
+    </select>
+
+    <div class="stats">
+      <span class="stat" v-for="(week, i) in weeks" :key="i">
+        {{ formatStat(week.stats) }}
+      </span>
     </div>
   </div>
 </template>
 
 <style scoped>
 .week-schedule {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: repeat(2, 2.5rem) 1fr;
+  column-gap: var(--padding-small);
+  grid-template-areas:
+    'month-nav category'
+    'weekdays subcategory'
+    'calendar stats';
 }
 
-.title {
+.month-nav {
+  grid-area: month-nav;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -297,15 +308,8 @@ export default {
   transform: rotate(180deg);
 }
 
-.calendar-summaries {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  justify-content: center;
-  gap: var(--padding-small);
-}
-
 .calendar {
+  grid-area: calendar;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   grid-auto-rows: 2.5rem;
@@ -337,43 +341,63 @@ export default {
   border: 1.5px solid light-dark(black, lightgrey) !important;
 }
 
+.weekdays {
+  grid-area: weekdays;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  color: var(--text-color-faded);
+}
+
+.week-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .week-day,
 .week-total {
   font-weight: bold;
   font-size: smaller;
 }
 
-.week-day {
-  color: var(--text-color-faded);
-}
-
-.summaries {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  /* Cannot use fit-content in clamp() or min() */
-  min-width: fit-content;
-  width: 10ch;
-}
-
-@media screen and (min-width: 600px) {
-  .summaries {
-    width: 15ch;
-  }
-}
-
-.summaries>* {
-  height: 2.5rem;
-}
-
-.week-summary-options {
+.category,
+.subcategory {
+  width: 100%;
   background-color: var(--primary-color);
   color: var(--text-color-black);
   outline: none;
-  border-top-left-radius: var(--border-radius);
-  border-top-right-radius: var(--border-radius);
   border: none;
   border-bottom: 2px solid var(--background-color);
+  text-transform: capitalize;
+}
+
+.category {
+  grid-area: category;
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+}
+
+.subcategory {
+  grid-area: subcategory;
+}
+
+.stats {
+  grid-area: stats;
+  display: grid;
+  grid-auto-rows: auto;
+  min-width: 8ch;
+  padding: 0 var(--padding-small);
+  background-color: var(--primary-color);
+  color: var(--text-color-black);
+  border-bottom-left-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
+}
+
+.stat {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 
 .summary {

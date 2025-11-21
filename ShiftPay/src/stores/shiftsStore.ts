@@ -2,6 +2,31 @@ import { defineStore } from 'pinia';
 import { api } from '@/api';
 import { useAuthStore } from './authStore';
 import Shift from '@/models/Shift';
+import Duration from '@/models/Duration';
+
+export const STAT_OPTIONS = {
+  income: {
+    beforeTax: {
+      label: 'Before Tax',
+      iconURL: 'https://img.icons8.com/fluency/48/cash--v1.png'
+    }
+  },
+
+  hours: {
+    total: {
+      label: 'Total Hours',
+      iconURL: 'https://img.icons8.com/fluency/48/clock.png'
+    },
+    billable: {
+      label: 'Billable Hours',
+      iconURL: 'https://img.icons8.com/fluency/48/time-card.png'
+    },
+    breakTime: {
+      label: 'Break Time',
+      iconURL: 'https://img.icons8.com/fluency/48/tea.png'
+    }
+  }
+};
 
 export const useShiftsStore = defineStore('shifts', {
   state: () => ({
@@ -36,6 +61,38 @@ export const useShiftsStore = defineStore('shifts', {
 
           return this.range(startTime, endTime);
         }
+      };
+    },
+
+    stats(): (
+      startTime: Date,
+      endTime: Date
+    ) => {
+      income: { beforeTax: number };
+      hours: { total: Duration; billable: Duration; breakTime: Duration };
+    } {
+      return (startTime: Date, endTime: Date) => {
+        const shiftsInRange = this.range(startTime, endTime).filter((shift) => shift.endTime <= endTime);
+
+        return {
+          income: {
+            beforeTax: shiftsInRange.reduce((sum: number, shift: Shift) => sum + shift.income, 0)
+          },
+
+          hours: {
+            total: shiftsInRange.reduce((sum: Duration, shift: Shift) => sum.add(shift.duration), new Duration()),
+
+            billable: shiftsInRange.reduce(
+              (sum: Duration, shift: Shift) => sum.add(shift.billableDuration),
+              new Duration()
+            ),
+
+            breakTime: shiftsInRange.reduce(
+              (sum: Duration, shift: Shift) => sum.add(shift.totalBreakDuration),
+              new Duration()
+            )
+          }
+        };
       };
     }
   },
