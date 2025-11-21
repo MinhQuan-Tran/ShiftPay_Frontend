@@ -4,7 +4,7 @@ import { currencyFormat } from '@/utils';
 
 import { mapStores } from 'pinia';
 
-import { useShiftsStore, STAT_OPTIONS } from '@/stores/shiftsStore';
+import { useShiftsStore, STAT_OPTIONS, type Stats } from '@/stores/shiftsStore';
 
 export default {
   props: {
@@ -87,7 +87,7 @@ export default {
 
     weeks() {
       if (!Array.isArray(this.calendar) || this.calendar.length === 0) return [];
-      const weeks: Array<{ start: Date; end: Date; stats: any; }> = [];
+      const weeks: Array<{ start: Date; end: Date; stats: Stats; }> = [];
 
       for (let weekIndex = 0; weekIndex < this.calendar.length / 7; weekIndex++) {
         const weekStartDay = this.calendar[weekIndex * 7];

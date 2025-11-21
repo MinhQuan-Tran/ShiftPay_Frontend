@@ -28,6 +28,11 @@ export const STAT_OPTIONS = {
   }
 };
 
+export type Stats = {
+  income: { beforeTax: number };
+  hours: { total: Duration; billable: Duration; breakTime: Duration };
+};
+
 export const useShiftsStore = defineStore('shifts', {
   state: () => ({
     shifts: [] as Shift[]
@@ -64,13 +69,7 @@ export const useShiftsStore = defineStore('shifts', {
       };
     },
 
-    stats(): (
-      startTime: Date,
-      endTime: Date
-    ) => {
-      income: { beforeTax: number };
-      hours: { total: Duration; billable: Duration; breakTime: Duration };
-    } {
+    stats(): (startTime: Date, endTime: Date) => Stats {
       return (startTime: Date, endTime: Date) => {
         // Filter shifts that end within the range
         const shiftsInRange = this.range(startTime, endTime).filter((shift) => shift.endTime <= endTime);
