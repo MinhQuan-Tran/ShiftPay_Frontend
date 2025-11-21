@@ -223,8 +223,8 @@ export default {
   grid-area: income;
 }
 
-.info summary .billable-time {
-  grid-area: billable-time;
+.info summary .billable-duration {
+  grid-area: billable-duration;
 }
 
 .info summary .unpaid-breaks {
