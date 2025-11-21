@@ -103,8 +103,8 @@ export default class Duration {
       minutes: this.minutes + other.minutes
     });
 
-    this._hours = newDuration.hours;
-    this._minutes = newDuration.minutes;
+    this.hours = newDuration.hours;
+    this.minutes = newDuration.minutes;
 
     return newDuration;
   }

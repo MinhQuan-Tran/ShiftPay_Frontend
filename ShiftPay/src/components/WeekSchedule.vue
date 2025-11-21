@@ -87,35 +87,24 @@ export default {
 
     weeks() {
       if (!Array.isArray(this.calendar) || this.calendar.length === 0) return [];
-
       const weeks: Array<{ start: Date; end: Date; stats: any; }> = [];
-      let cursorIndex = 0;
-      while (cursorIndex < this.calendar.length) {
-        const weekStartDay = this.calendar[cursorIndex];
+
+      for (let weekIndex = 0; weekIndex < this.calendar.length / 7; weekIndex++) {
+        const weekStartDay = this.calendar[weekIndex * 7];
         const start = new Date(weekStartDay.dayStartTime);
-        start.setHours(0, 0, 0, 0);
+        start.setHours(0, 0, 0, 0); // Monday 12am
         const end = new Date(start);
-        end.setDate(end.getDate() + 7); // exclusive end
+        end.setDate(end.getDate() + 7); // Next Monday 12am (exclusive end)
 
         // Gather stats using store getter
         const stats = this.shiftsStore.stats(start, end);
         weeks.push({ start, end, stats });
-
-        // Advance cursor to next Monday (skip remaining days of current week)
-        cursorIndex++;
-        while (cursorIndex < this.calendar.length) {
-          const d = this.calendar[cursorIndex].dayStartTime.getDay();
-          if (d === 1) break; // Monday
-          cursorIndex++;
-        }
       }
       return weeks;
     },
   },
 
   methods: {
-    currencyFormat,
-
     updateTitleByMonth() {
       const date = new Date(this.today);
       date.setMonth(date.getMonth() + this.monthChange);
@@ -138,7 +127,7 @@ export default {
 
       switch (category) {
         case 'income':
-          return this.currencyFormat(stats.income.beforeTax);
+          return currencyFormat(stats.income.beforeTax);
 
         case 'hours': {
           const duration = stats.hours[sub];

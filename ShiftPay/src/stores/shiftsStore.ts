@@ -72,6 +72,7 @@ export const useShiftsStore = defineStore('shifts', {
       hours: { total: Duration; billable: Duration; breakTime: Duration };
     } {
       return (startTime: Date, endTime: Date) => {
+        // Filter shifts that end within the range
         const shiftsInRange = this.range(startTime, endTime).filter((shift) => shift.endTime <= endTime);
 
         return {
