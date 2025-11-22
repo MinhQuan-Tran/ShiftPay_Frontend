@@ -234,7 +234,7 @@ export default {
 <style scoped>
 .week-schedule {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 7fr minmax(min-content, 1fr);
   grid-template-rows: repeat(2, 2.5rem) 1fr;
   column-gap: var(--padding-small);
   grid-template-areas:
