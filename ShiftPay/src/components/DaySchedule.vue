@@ -1,6 +1,7 @@
 <script lang="ts">
 import Shift from '@/models/Shift';
 import { currencyFormat, toTimeStr } from '@/utils';
+import { STATUS } from '@/types';
 
 import { mapStores } from 'pinia';
 import { useShiftsStore } from '@/stores/shiftsStore';
@@ -10,6 +11,7 @@ import DayScheduleShift from '@/components/DayScheduleShiftCard.vue';
 import BaseDialog from '@/components/BaseDialog.vue';
 import ClearShiftsForm from '@/components/ClearShiftsForm.vue';
 import ShiftForm from '@/components/ShiftForm.vue';
+import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 export default {
   props: {
@@ -21,6 +23,7 @@ export default {
 
   data() {
     return {
+      STATUS,
       selectedShift: undefined as Shift | undefined,
       shiftFormData: {
         title: 'Shift',
@@ -40,7 +43,7 @@ export default {
     };
   },
 
-  components: { DayScheduleShift, BaseDialog, ClearShiftsForm, ShiftForm },
+  components: { DayScheduleShift, BaseDialog, ClearShiftsForm, ShiftForm, LoadingOverlay },
 
   methods: {
     currencyFormat,
@@ -156,11 +159,15 @@ export default {
     <BaseDialog ref="shiftDialog" :title="shiftFormData.title" :reset-forms="shiftFormData.resetForm">
       <ShiftForm :selected-date="selectedDate" :shift="shiftFormData.placeholderShift" :action="shiftFormData.action" />
     </BaseDialog>
+
+    <LoadingOverlay :active="shiftsStore.status === STATUS.Loading" />
   </div>
 </template>
 
 <style scoped>
 .day-schedule {
+  position: relative;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: stretch;

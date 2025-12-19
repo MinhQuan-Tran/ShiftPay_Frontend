@@ -1,10 +1,11 @@
 <script lang="ts">
-import type { Day } from '@/types';
+import { type Day, STATUS } from '@/types';
 import { currencyFormat } from '@/utils';
 
 import { mapStores } from 'pinia';
 
 import { useShiftsStore, STAT_OPTIONS, type Stats } from '@/stores/shiftsStore';
+import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 export default {
   props: {
@@ -20,6 +21,7 @@ export default {
     const today = new Date();
 
     return {
+      STATUS,
       title: 'Week Schedule',
       weekDays: ['M.', 'Tu.', 'W.', 'Th.', 'F', 'Sa.', 'Su.'],
       today,
@@ -31,6 +33,8 @@ export default {
       STAT_OPTIONS
     };
   },
+
+  components: { LoadingOverlay },
 
   computed: {
     ...mapStores(useShiftsStore),
@@ -228,11 +232,14 @@ export default {
         {{ formatStat(week.stats) }}
       </span>
     </div>
+
+    <LoadingOverlay :active="shiftsStore.status === STATUS.Loading" />
   </div>
 </template>
 
 <style scoped>
 .week-schedule {
+  position: relative;
   display: grid;
   grid-template-columns: 7fr minmax(min-content, 1fr);
   grid-template-rows: repeat(2, 2.5rem) 1fr;

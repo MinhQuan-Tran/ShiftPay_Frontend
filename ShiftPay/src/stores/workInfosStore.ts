@@ -2,58 +2,65 @@ import { defineStore } from 'pinia';
 // import { api } from '@/api';
 // import { useAuthStore } from './authStore';
 import type { WorkInfo } from '@/types';
+import { STATUS, type Status } from '@/types';
+import { withStatus } from '@/utils';
 
 export const useWorkInfosStore = defineStore('workInfos', {
   state: () => ({
-    workInfos: new Map<string, WorkInfo>()
+    workInfos: new Map<string, WorkInfo>(),
+    status: STATUS.Ready as Status
   }),
 
   actions: {
     async fetch(): Promise<void> {
-      // const auth = useAuthStore();
+      await withStatus(this, async () => {
+        // const auth = useAuthStore();
 
-      const rawData = localStorage.getItem('workInfos') || localStorage.getItem('prevWorkInfos') || '{}';
+        const rawData = localStorage.getItem('workInfos') || localStorage.getItem('prevWorkInfos') || '{}';
 
-      // if (auth.isAuthenticated) {
-      //   rawData = await api.prevWorkInfos.fetch();
-      // }
+        // if (auth.isAuthenticated) {
+        //   rawData = await api.prevWorkInfos.fetch();
+        // }
 
-      // Parse & Validate
-      this.workInfos = new Map<string, WorkInfo>(
-        Object.entries(
-          JSON.parse(rawData, function (_, value) {
-            if (typeof value === 'object' && value !== null) {
-              // Convert payRates array to Set
-              if (Array.isArray(value.payRates)) {
-                value.payRates = new Set(value.payRates);
+        // Parse & Validate
+        this.workInfos = new Map<string, WorkInfo>(
+          Object.entries(
+            JSON.parse(rawData, function (_, value) {
+              if (typeof value === 'object' && value !== null) {
+                // Convert payRates array to Set
+                if (Array.isArray(value.payRates)) {
+                  value.payRates = new Set(value.payRates);
+                }
               }
-            }
 
-            return value;
-          })
-        )
-      );
+              return value;
+            })
+          )
+        );
 
-      localStorage.removeItem('prevWorkInfos'); // Remove old key
+        localStorage.removeItem('prevWorkInfos'); // Remove old key
+      });
     },
 
     async add(workplace: string, payRate: number): Promise<void> {
-      // Validate
-      workplace = String(workplace).trim();
-      if (workplace === '') {
-        throw new Error('Workplace cannot be empty');
-      }
+      await withStatus(this, async () => {
+        // Validate
+        workplace = String(workplace).trim();
+        if (workplace === '') {
+          throw new Error('Workplace cannot be empty');
+        }
 
-      payRate = Number(payRate);
-      if (isNaN(payRate)) {
-        throw new Error('Invalid pay rate');
-      }
+        payRate = Number(payRate);
+        if (isNaN(payRate)) {
+          throw new Error('Invalid pay rate');
+        }
 
-      // Local update
-      if (!this.workInfos.has(workplace)) {
-        this.workInfos.set(workplace, { payRates: new Set<number>() });
-      }
-      this.workInfos.get(workplace)!.payRates.add(payRate);
+        // Local update
+        if (!this.workInfos.has(workplace)) {
+          this.workInfos.set(workplace, { payRates: new Set<number>() });
+        }
+        this.workInfos.get(workplace)!.payRates.add(payRate);
+      });
 
       // const auth = useAuthStore();
 
@@ -108,15 +115,17 @@ export const useWorkInfosStore = defineStore('workInfos', {
       //   }
       // }
 
-      // Local update
-      if (typeof payRate === 'number') {
-        if (this.workInfos.get(workplace)) {
-          this.workInfos.get(workplace)!.payRates.delete(Number(payRate));
-          if (this.workInfos.get(workplace)!.payRates.size === 0) {
-            this.workInfos.delete(workplace);
+      await withStatus(this, async () => {
+        // Local update
+        if (typeof payRate === 'number') {
+          if (this.workInfos.get(workplace)) {
+            this.workInfos.get(workplace)!.payRates.delete(Number(payRate));
+            if (this.workInfos.get(workplace)!.payRates.size === 0) {
+              this.workInfos.delete(workplace);
+            }
           }
         }
-      }
+      });
     },
 
     /**
