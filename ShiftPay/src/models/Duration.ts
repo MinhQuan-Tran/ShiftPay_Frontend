@@ -8,8 +8,8 @@ export default class Duration {
 
   constructor(
     props?:
-      | string
       | { _hours?: number; _minutes?: number; hours?: number; minutes?: number; startTime?: Date; endTime?: Date }
+      | string
   ) {
     if (!props) {
       this.hours = 0;
