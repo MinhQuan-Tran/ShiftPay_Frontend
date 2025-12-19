@@ -2,9 +2,9 @@
 import { mapStores } from 'pinia';
 
 import { useAuthStore } from '@/stores/authStore';
-import { useShiftsStore } from '@/stores/shiftStore';
-import { useShiftTemplatesStore } from '@/stores/shiftTemplateStore';
-import { useWorkInfosStore } from '@/stores/workInfoStore';
+import { useShiftsStore } from '@/stores/shiftsStore';
+import { useShiftTemplatesStore } from '@/stores/shiftTemplatesStore';
+import { useWorkInfosStore } from '@/stores/workInfosStore';
 import { useShiftSessionStore } from '@/stores/shiftSessionStore';
 
 import Shift from '@/models/Shift';
@@ -185,13 +185,15 @@ export default {
 
           if (checkInTime) this.shiftSessionStore.set(checkInTime);
           else this.shiftSessionStore.clear();
-
-          console.log('Data import complete.');
-          alert('Data import complete.');
-        }).catch((error) => {
-          console.error('Error during data import:', error);
-          alert(`Error during data import`);
-        });
+        })
+          .then(() => {
+            console.log('Data import complete.');
+            alert('Data import complete.');
+          })
+          .catch((error) => {
+            console.error('Error during data import:', error);
+            alert(`Error during data import`);
+          });
       };
 
       reader.readAsText(file);
@@ -199,8 +201,7 @@ export default {
 
     async handleLogin() {
       await this.authStore.login();
-
-      await this.shiftsStore.fetch();
+      this.shiftsStore.fetch();
     }
   }
 };

@@ -15,6 +15,10 @@ export default defineConfig({
     }
   },
   server: {
-    port: 8080
+    port: 8080,
+    allowedHosts: (process.env.VITE_ALLOWED_HOSTS ?? '')
+      .split(',')
+      .map((host) => host.trim())
+      .filter(Boolean)
   }
 });

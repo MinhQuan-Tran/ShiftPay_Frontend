@@ -1,5 +1,3 @@
-import Duration from '@/models/Duration';
-
 export type WorkInfo = {
   payRates: Set<number>;
 };
@@ -11,10 +9,5 @@ export type Day = {
   nextMonth: boolean; // Is this the day from the next month?
 };
 
-export type Week = {
-  days: Day[];
-  summaries: {
-    income: number;
-    totalHours: Duration;
-  };
-};
+export const STATUS = { Ready: 'Ready', Loading: 'Loading', Error: 'Error' } as const;
+export type Status = (typeof STATUS)[keyof typeof STATUS];

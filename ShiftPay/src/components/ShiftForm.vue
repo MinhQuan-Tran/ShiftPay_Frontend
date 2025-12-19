@@ -2,16 +2,18 @@
 import Shift from '@/models/Shift';
 import Duration from '@/models/Duration';
 import { deepClone } from '@/utils';
+import { STATUS } from '@/types';
 
 import { mapStores } from 'pinia';
-import { useShiftsStore } from '@/stores/shiftStore';
-import { useWorkInfosStore } from '@/stores/workInfoStore';
-import { useShiftTemplatesStore } from '@/stores/shiftTemplateStore';
+import { useShiftsStore } from '@/stores/shiftsStore';
+import { useWorkInfosStore } from '@/stores/workInfosStore';
+import { useShiftTemplatesStore } from '@/stores/shiftTemplatesStore';
 import { useShiftSessionStore } from '@/stores/shiftSessionStore';
 
 import ButtonConfirm from './ButtonConfirm.vue';
 import ComboBox from './ComboBox.vue';
 import InputLabel from './InputLabel.vue';
+import LoadingOverlay from './LoadingOverlay.vue';
 
 export default {
   props: {
@@ -31,6 +33,7 @@ export default {
 
   data() {
     return {
+      STATUS,
       formData: deepClone<Partial<Shift>>(this.shift),
       saveShiftTemplate: false,
       deleteShiftTemplate: false,
@@ -251,7 +254,8 @@ export default {
   components: {
     ButtonConfirm,
     ComboBox,
-    InputLabel
+    InputLabel,
+    LoadingOverlay
   },
 
   watch: {
@@ -264,6 +268,10 @@ export default {
 
 <template>
   <form @submit.prevent="shiftAction" @reset.prevent="resetForm" ref="shiftForm">
+    <LoadingOverlay :active="shiftsStore.status === STATUS.Loading ||
+      workInfosStore.status === STATUS.Loading ||
+      shiftTemplatesStore.status === STATUS.Loading
+      " />
     <input type="hidden" name="id" v-model="formData.id" />
 
     <InputLabel label-text="Shift Templates" v-if="action === 'add'" v-model:toggle-value="deleteShiftTemplate"
@@ -416,6 +424,7 @@ export default {
 <style scoped>
 form {
   gap: calc(var(--padding) * 1.5);
+  position: relative;
 }
 
 .shift-templates {

@@ -1,3 +1,5 @@
+import { STATUS, type Status } from '@/types';
+
 export function currencyFormat(value: number): string {
   return Intl.NumberFormat([], {
     style: 'currency',
@@ -73,4 +75,25 @@ export function deepClone<T>(obj: T, hash = new WeakMap()): T {
   }
 
   return clonedObj as T;
+}
+
+/**
+ * Executes a function while managing a store's `status` lifecycle.
+ * - Sets `status` to `Loading` before running
+ * - Sets `status` to `Error` and rethrows on failure
+ * - Sets `status` back to `Ready` in `finally` (unless already `Error`)
+ */
+export async function withStatus<T>(store: { status: Status }, executor: () => Promise<T> | T): Promise<T> {
+  store.status = STATUS.Loading;
+  try {
+    const result = await Promise.resolve(executor());
+    return result;
+  } catch (error: any) {
+    store.status = STATUS.Error;
+    throw error instanceof Error ? error : new Error(String(error));
+  } finally {
+    if (store.status !== STATUS.Error) {
+      store.status = STATUS.Ready;
+    }
+  }
 }

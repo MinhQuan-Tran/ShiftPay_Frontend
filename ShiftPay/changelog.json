@@ -136,5 +136,14 @@
       "[Fix] Unpaid breaks not being saved locally and loaded correctly",
       "[Feature - Beta] Clear shifts data now works for online authenticated users"
     ]
+  },
+  {
+    "version": "0.3.10",
+    "date": "2025-12-19T00:00:00+1100",
+    "changes": [
+      "[Feature] Billable hours summary in week view",
+      "[Fix] Incorrect duration assignment in week calculations",
+      "Enhance week stats UI and schedule layout"
+    ]
   }
 ]

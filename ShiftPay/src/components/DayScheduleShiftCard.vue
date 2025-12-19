@@ -31,11 +31,9 @@ export default {
 <template>
   <div class="shift">
     <div class="datetime">
-      <div class="start-time">
-        <div
-          class="date"
-          v-if="new Date(shift.startTime).setHours(0, 0, 0, 0) !== new Date(selectedDate).setHours(0, 0, 0, 0)"
-        >
+      <div class="start-time" title="Start Time">
+        <div class="date"
+          v-if="new Date(shift.startTime).setHours(0, 0, 0, 0) !== new Date(selectedDate).setHours(0, 0, 0, 0)">
           {{
             shift.startTime.toLocaleDateString(undefined, {
               month: 'short',
@@ -45,11 +43,9 @@ export default {
         </div>
         <div class="time">{{ toTimeStr(shift.startTime) }}</div>
       </div>
-      <div class="end-time">
-        <div
-          class="date"
-          v-if="new Date(shift.endTime).setHours(0, 0, 0, 0) !== new Date(selectedDate).setHours(0, 0, 0, 0)"
-        >
+      <div class="end-time" title="End Time">
+        <div class="date"
+          v-if="new Date(shift.endTime).setHours(0, 0, 0, 0) !== new Date(selectedDate).setHours(0, 0, 0, 0)">
           {{
             shift.endTime.toLocaleDateString(undefined, {
               month: 'short',
@@ -60,66 +56,55 @@ export default {
         <div class="time">{{ toTimeStr(shift.endTime) }}</div>
       </div>
     </div>
+
     <div class="divider"></div>
+
     <!-- Allow user to open multiple shifts to compare -->
     <details class="info">
       <summary>
-        <div class="workplace">{{ shift.workplace }}</div>
-        <div class="billable-time">
+        <div class="workplace" title="Workplace">{{ shift.workplace }}</div>
+
+        <div class="billable-duration" title="Billable Duration">
           {{ shift.billableDuration?.format('short') ?? 'error' }}
-          <img
-            width="48"
-            height="48"
-            src="https://img.icons8.com/fluency/48/time-card.png"
-            alt="time-card"
-            class="inline-icon"
-          />
+          <img width="48" height="48" src="https://img.icons8.com/fluency/48/time-card.png" alt="time-card"
+            class="inline-icon" />
         </div>
-        <div class="earning">
-          <img
-            width="48"
-            height="48"
-            src="https://img.icons8.com/fluency/48/cash--v1.png"
-            alt="cash--v1"
-            class="inline-icon"
-          />
+
+        <div class="income" title="Income">
+          <img width="48" height="48" src="https://img.icons8.com/fluency/48/cash--v1.png" alt="cash--v1"
+            class="inline-icon" />
           {{ shift.income === undefined ? 'error' : currencyFormat(shift.income) }}
         </div>
-        <div class="unpaid-breaks">
+
+        <div class="unpaid-breaks" title="Total Unpaid Break Duration">
           {{ shift.totalBreakDuration.format('short') }}
           <img width="48" height="48" src="https://img.icons8.com/fluency/48/tea.png" alt="tea" class="inline-icon" />
         </div>
       </summary>
+
       <div class="details">
-        <div class="secondary-info">
+        <div class="info">
           <div class="others">
-            <div class="hourly-rate">{{ currencyFormat(shift.payRate) }}/hr</div>
+            <div class="hourly-rate" title="Hourly Rate">{{ currencyFormat(shift.payRate) }}/hr</div>
           </div>
+
           <div class="times">
             <div v-for="(breakTime, index) in shift.unpaidBreaks" :key="index">
               <div>
                 {{ breakTime.format('short') }}
-                <img
-                  width="48"
-                  height="48"
-                  src="https://img.icons8.com/fluency/48/tea.png"
-                  alt="tea"
-                  class="inline-icon"
-                />
+                <img width="48" height="48" src="https://img.icons8.com/fluency/48/tea.png" alt="tea"
+                  class="inline-icon" />
               </div>
             </div>
-            <div class="shift-duration">
+
+            <div class="shift-duration" title="Shift Duration (including breaks)">
               {{ shift.duration.format('short') }}
-              <img
-                width="48"
-                height="48"
-                src="https://img.icons8.com/fluency/48/clock.png"
-                alt="clock"
-                class="inline-icon"
-              />
+              <img width="48" height="48" src="https://img.icons8.com/fluency/48/clock.png" alt="clock"
+                class="inline-icon" />
             </div>
           </div>
         </div>
+
         <div class="actions">
           <button @click="handleEditShift(shift)">Edit</button>
         </div>
@@ -199,8 +184,8 @@ export default {
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-areas:
-    'workplace billable-time'
-    'earning   unpaid-breaks';
+    'workplace billable-duration'
+    'income   unpaid-breaks';
   gap: var(--padding);
   justify-items: stretch;
   justify-content: stretch;
@@ -213,15 +198,20 @@ export default {
   cursor: pointer;
 }
 
-.info summary > * {
+.info summary>* {
   text-wrap: balance;
   text-wrap: pretty;
   word-break: break-word;
   overflow-wrap: break-word;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: var(--padding-small);
 }
 
-.info summary > *:nth-child(2n) {
+.info summary>*:nth-child(2n) {
   text-align: right;
+  justify-content: flex-end;
 }
 
 .info summary .workplace {
@@ -229,12 +219,12 @@ export default {
   font-weight: bold;
 }
 
-.info summary .earning {
-  grid-area: earning;
+.info summary .income {
+  grid-area: income;
 }
 
-.info summary .billable-time {
-  grid-area: billable-time;
+.info summary .billable-duration {
+  grid-area: billable-duration;
 }
 
 .info summary .unpaid-breaks {
@@ -249,12 +239,12 @@ export default {
   gap: var(--padding-small);
 }
 
-.details .secondary-info {
+.details .info {
   display: grid;
   grid-template-columns: 1fr 1fr;
 }
 
-.details .secondary-info > * {
+.details .info>* {
   text-wrap: balance;
   text-wrap: pretty;
   word-break: break-word;
@@ -266,7 +256,7 @@ export default {
   gap: var(--padding);
 }
 
-.details .secondary-info .times {
+.details .info .times {
   text-align: right;
 }
 
@@ -277,7 +267,7 @@ export default {
   gap: var(--padding);
 }
 
-.details .actions > * {
+.details .actions>* {
   flex: 1;
   box-shadow: none;
 }

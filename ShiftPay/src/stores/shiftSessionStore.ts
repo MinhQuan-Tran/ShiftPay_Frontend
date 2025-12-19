@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia';
+import { STATUS, type Status } from '@/types';
+import { withStatus } from '@/utils';
 
 export const useShiftSessionStore = defineStore('shiftSession', {
   state: () => ({
-    checkInTime: undefined as Date | undefined
+    checkInTime: undefined as Date | undefined,
+    status: STATUS.Ready as Status
   }),
 
   getters: {
@@ -15,18 +18,20 @@ export const useShiftSessionStore = defineStore('shiftSession', {
 
   actions: {
     async fetch(): Promise<void> {
-      // Load from localStorage
-      const rawData = localStorage.getItem('checkInTime');
+      await withStatus(this, async () => {
+        // Load from localStorage
+        const rawData = localStorage.getItem('checkInTime');
 
-      if (rawData) {
-        const date = new Date(rawData);
+        if (rawData) {
+          const date = new Date(rawData);
 
-        if (!isNaN(date.getTime())) {
-          return this.set(date);
+          if (!isNaN(date.getTime())) {
+            return this.set(date);
+          }
         }
-      }
 
-      this.clear();
+        this.clear();
+      });
     },
 
     set(date?: Date) {

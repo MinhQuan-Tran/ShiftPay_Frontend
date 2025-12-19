@@ -4,9 +4,9 @@ import changelog from '@/../changelog.json';
 
 import { mapStores } from 'pinia';
 import { useAuthStore } from './stores/authStore';
-import { useShiftsStore } from '@/stores/shiftStore';
-import { useShiftTemplatesStore } from '@/stores/shiftTemplateStore';
-import { useWorkInfosStore } from '@/stores/workInfoStore';
+import { useShiftsStore } from '@/stores/shiftsStore';
+import { useShiftTemplatesStore } from '@/stores/shiftTemplatesStore';
+import { useWorkInfosStore } from '@/stores/workInfosStore';
 import { useShiftSessionStore } from '@/stores/shiftSessionStore';
 
 import MainMenu from '@/components/MainMenu.vue';
