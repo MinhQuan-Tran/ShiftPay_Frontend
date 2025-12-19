@@ -125,7 +125,7 @@ export default {
       this.updateTitleByMonth();
     },
 
-    formatStat(stats: any) {
+    formatStat(stats: Stats) {
       const category = this.selectedStatOption;
       const sub = this.selectedSubcategoryOption;
 
@@ -134,7 +134,7 @@ export default {
           return currencyFormat(stats.income.beforeTax);
 
         case 'hours': {
-          const duration = stats.hours[sub];
+          const duration = stats.hours[sub] as any;
           if (duration && typeof duration.format === 'function') {
             return duration.format();
           }
