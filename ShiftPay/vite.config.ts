@@ -16,6 +16,9 @@ export default defineConfig({
   },
   server: {
     port: 8080,
-    allowedHosts: ['devserver-development--shiftpay-mqtran.netlify.app']
+    allowedHosts: (process.env.VITE_ALLOWED_HOSTS ?? '')
+      .split(',')
+      .map((host) => host.trim())
+      .filter(Boolean)
   }
 });
