@@ -4,15 +4,13 @@ import { withStatus } from '@/utils';
 
 export const useShiftSessionStore = defineStore('shiftSession', {
   state: () => ({
-    checkInTime: undefined as Date | undefined,
+    startTime: undefined as Date | undefined,
     status: STATUS.Ready as Status
   }),
 
   getters: {
-    isCheckedIn(state): boolean {
-      return (
-        state.checkInTime !== undefined && state.checkInTime instanceof Date && !isNaN(state.checkInTime.getTime())
-      );
+    isInProgress(state): boolean {
+      return state.startTime !== undefined && state.startTime instanceof Date && !isNaN(state.startTime.getTime());
     }
   },
 
@@ -20,7 +18,7 @@ export const useShiftSessionStore = defineStore('shiftSession', {
     async fetch(): Promise<void> {
       await withStatus(this, async () => {
         // Load from localStorage
-        const rawData = localStorage.getItem('checkInTime');
+        const rawData = localStorage.getItem('startTime') || localStorage.getItem('checkInTime');
 
         if (rawData) {
           const date = new Date(rawData);
@@ -35,11 +33,11 @@ export const useShiftSessionStore = defineStore('shiftSession', {
     },
 
     set(date?: Date) {
-      this.checkInTime = date ?? new Date();
+      this.startTime = date ?? new Date();
     },
 
     clear() {
-      this.checkInTime = undefined;
+      this.startTime = undefined;
     },
 
     /**
@@ -49,9 +47,10 @@ export const useShiftSessionStore = defineStore('shiftSession', {
     enableAutoPersist(): void {
       this.$subscribe(
         function (_mutation, state) {
-          if (state.checkInTime instanceof Date) {
-            localStorage.setItem('checkInTime', state.checkInTime.toISOString());
+          if (state.startTime instanceof Date) {
+            localStorage.setItem('startTime', state.startTime.toISOString());
           } else {
+            localStorage.removeItem('startTime');
             localStorage.removeItem('checkInTime');
           }
         },
