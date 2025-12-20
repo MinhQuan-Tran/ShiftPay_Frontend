@@ -62,13 +62,13 @@ export default {
 
     handleCheckInOut() {
       // If not checked in
-      if (!this.shiftSessionStore.isCheckedIn) {
+      if (!this.shiftSessionStore.isInProgress) {
         // Check in
         this.shiftSessionStore.set();
         return;
       }
 
-      if (isNaN(this.shiftSessionStore.checkInTime!.getTime())) {
+      if (isNaN(this.shiftSessionStore.startTime!.getTime())) {
         if (confirm('Invalid check in time. Do you want to remove it?')) {
           this.shiftSessionStore.clear();
         }
@@ -81,7 +81,7 @@ export default {
         resetForm: false,
         action: 'check in/out',
         placeholderShift: {
-          startTime: this.shiftSessionStore.checkInTime,
+          startTime: this.shiftSessionStore.startTime,
           endTime: new Date()
         }
       };
@@ -136,8 +136,8 @@ export default {
       <Transition>
         <button v-if="selectedDate.setHours(0, 0, 0, 0) == new Date().setHours(0, 0, 0, 0)" @click="handleCheckInOut"
           id="check-in-out-btn"
-          :class="{ primary: !shiftSessionStore.isCheckedIn, warning: shiftSessionStore.isCheckedIn }">
-          Check-{{ shiftSessionStore.isCheckedIn ? 'Out' : 'In' }}
+          :class="{ primary: !shiftSessionStore.isInProgress, warning: shiftSessionStore.isInProgress }">
+          {{ shiftSessionStore.isInProgress ? 'End' : 'Start' }} Shift
         </button>
       </Transition>
 
