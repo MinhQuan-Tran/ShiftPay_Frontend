@@ -137,7 +137,7 @@ export default {
         <button v-if="selectedDate.setHours(0, 0, 0, 0) == new Date().setHours(0, 0, 0, 0)" @click="handleCheckInOut"
           id="check-in-out-btn"
           :class="{ primary: !shiftSessionStore.isCheckedIn, warning: shiftSessionStore.isCheckedIn }">
-          Check-{{ shiftSessionStore.isCheckedIn ? 'Out' : 'In' }}
+          {{ shiftSessionStore.isCheckedIn ? 'End' : 'Start' }} Shift
         </button>
       </Transition>
 

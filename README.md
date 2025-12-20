@@ -1,9 +1,9 @@
 # ShiftPay - Web App
 
-## Live Product
+## Live Demo
 
 [https://shiftpay-mqtran.netlify.app/](https://shiftpay-mqtran.netlify.app/)
 
-## Architecture and Flows (C4 Model)
+## Document Repository
 
-[https://s.icepanel.io/6Gly5HmgeLhqbo/1TFX](https://s.icepanel.io/6Gly5HmgeLhqbo/1TFX)
+[https://github.com/MinhQuan-Tran/ShiftPay_Document](https://github.com/MinhQuan-Tran/ShiftPay_Document)
