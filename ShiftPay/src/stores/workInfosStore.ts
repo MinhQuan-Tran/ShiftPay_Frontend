@@ -24,19 +24,10 @@ export const useWorkInfosStore = defineStore('workInfos', {
 
         // Parse & Validate
         this.workInfos = new Map<string, WorkInfo>(
-          Object.entries(
-            JSON.parse(rawData, function (_, value) {
-              if (typeof value === 'object' && value !== null) {
-                // Convert payRates array to Set
-                if (Array.isArray(value.payRates)) {
-                  value.payRates = new Set(value.payRates);
-                }
-              }
-
-              return value;
-            })
-          )
+          JSON.parse(rawData).map((workInfo: any) => [workInfo.workplace, { payRates: new Set(workInfo.payRates) }])
         );
+
+        console.log(this.workInfos);
 
         localStorage.removeItem('prevWorkInfos'); // Remove old key
       });
@@ -136,13 +127,16 @@ export const useWorkInfosStore = defineStore('workInfos', {
       this.$subscribe(
         function (_mutation, state) {
           localStorage.setItem(
-            'prevWorkInfos',
-            JSON.stringify(state.workInfos, function (_, value) {
-              if (value instanceof Set) {
-                return Array.from(value);
-              }
-              return value;
-            })
+            'workInfos',
+            JSON.stringify(
+              Array.from(state.workInfos, (workInfo) => {
+                console.log(workInfo);
+                return {
+                  workplace: workInfo[0],
+                  payRates: Array.from(workInfo[1].payRates)
+                };
+              })
+            )
           );
         },
         { detached: true }

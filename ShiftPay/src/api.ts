@@ -98,19 +98,19 @@ export const api = {
     }
   },
 
-  summary: {
-    async fetch(arg?: QueryParams) {
-      return createRequest('summary', { method: 'GET', queryParams: arg });
-    }
-  },
+  // summary: {
+  //   async fetch(arg?: QueryParams) {
+  //     return createRequest('summary', { method: 'GET', queryParams: arg });
+  //   }
+  // },
 
   workInfos: {
     async fetch() {
       return createRequest('workInfos', { method: 'GET' });
     },
 
-    async create(workplace: string, payRate: number) {
-      return createRequest('workInfos', { method: 'POST', body: { workplace, payRate } });
+    async create(workplace: string, payRates: number[]) {
+      return createRequest('workInfos', { method: 'POST', body: { workplace, payRates } });
     },
 
     // No update
@@ -122,19 +122,19 @@ export const api = {
 
       return createRequest('workInfos', { method: 'DELETE', queryParams });
     }
-  },
-
-  shiftTemplates: {
-    async fetch() {
-      return createRequest('shiftTemplates', { method: 'GET' });
-    },
-
-    async create(shift: Shift) {
-      return createRequest('shiftTemplates', { method: 'POST', body: shift.toDTO() });
-    },
-
-    async delete(id: string) {
-      return createRequest(`shiftTemplates/${id}`, { method: 'DELETE' });
-    }
   }
+
+  // shiftTemplates: {
+  //   async fetch() {
+  //     return createRequest('shiftTemplates', { method: 'GET' });
+  //   },
+
+  //   async create(shift: Shift) {
+  //     return createRequest('shiftTemplates', { method: 'POST', body: shift.toDTO() });
+  //   },
+
+  //   async delete(id: string) {
+  //     return createRequest(`shiftTemplates/${id}`, { method: 'DELETE' });
+  //   }
+  // }
 };

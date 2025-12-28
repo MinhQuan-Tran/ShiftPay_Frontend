@@ -295,11 +295,12 @@ export default {
     </InputLabel>
 
     <InputLabel label-text="Workplace" for-id="workplace">
-      <ComboBox :value="formData?.workplace || ''" @update:value="newValue => formData.workplace = newValue"
-        :list="Object.keys(workInfosStore.workInfos)" @delete-item="workInfo => workInfosStore.delete(workInfo)"
+      <ComboBox :value="formData?.workplace || ''"
+        @update:value="newValue => { formData.workplace = newValue; formData.payRate = undefined; }"
+        :list="Array.from(workInfosStore.workInfos.keys())" @delete-item="workInfo => workInfosStore.delete(workInfo)"
         deletable>
-        <input type="text" id="workplace" name="workplace" placeholder="e.g. Company Name" v-model="formData.workplace"
-          required />
+        <input type="search" id="workplace" name="workplace" placeholder="e.g. Company Name"
+          v-model="formData.workplace" required />
       </ComboBox>
     </InputLabel>
 
