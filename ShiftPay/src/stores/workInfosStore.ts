@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
-// import { api } from '@/api';
-// import { useAuthStore } from './authStore';
+import { api } from '@/api';
+import { useAuthStore } from './authStore';
 import type { WorkInfo } from '@/types';
 import { STATUS, type Status } from '@/types';
 import { withStatus } from '@/utils';
@@ -14,22 +14,26 @@ export const useWorkInfosStore = defineStore('workInfos', {
   actions: {
     async fetch(): Promise<void> {
       await withStatus(this, async () => {
-        // const auth = useAuthStore();
+        let parsedData = JSON.parse(localStorage.getItem('workInfos') || localStorage.getItem('prevWorkInfos') || '[]');
 
-        const rawData = localStorage.getItem('workInfos') || localStorage.getItem('prevWorkInfos') || '{}';
+        try {
+          const auth = useAuthStore();
 
-        // if (auth.isAuthenticated) {
-        //   rawData = await api.prevWorkInfos.fetch();
-        // }
+          if (auth.isAuthenticated) {
+            parsedData = await api.workInfos.fetch();
+          }
+          // Parse & Validate
+          this.workInfos = new Map<string, WorkInfo>(
+            parsedData.map((workInfo: any) => [workInfo.workplace, { payRates: new Set(workInfo.payRates) }])
+          );
 
-        // Parse & Validate
-        this.workInfos = new Map<string, WorkInfo>(
-          JSON.parse(rawData).map((workInfo: any) => [workInfo.workplace, { payRates: new Set(workInfo.payRates) }])
-        );
-
-        console.log(this.workInfos);
-
-        localStorage.removeItem('prevWorkInfos'); // Remove old key
+          localStorage.removeItem('prevWorkInfos'); // Remove old key
+        } catch (error: any) {
+          console.error(error);
+          throw new Error(
+            'Failed to fetch previous work infos: ' + (error && error.message ? error.message : String(error))
+          );
+        }
       });
     },
 
@@ -46,76 +50,52 @@ export const useWorkInfosStore = defineStore('workInfos', {
           throw new Error('Invalid pay rate');
         }
 
+        // Remote update
+        const auth = useAuthStore();
+
+        if (auth.isAuthenticated) {
+          try {
+            const workInfo = await api.workInfos.create(workplace, [payRate]);
+
+            // Replace with server response to ensure consistency
+            this.workInfos.set(workInfo.workplace, { payRates: new Set(workInfo.payRates) });
+
+            return;
+          } catch (error: any) {
+            throw new Error('Failed to add work info: ' + (error?.message ?? String(error)));
+          }
+        }
+
         // Local update
         if (!this.workInfos.has(workplace)) {
           this.workInfos.set(workplace, { payRates: new Set<number>() });
         }
         this.workInfos.get(workplace)!.payRates.add(payRate);
       });
-
-      // const auth = useAuthStore();
-
-      // // Offline / unauthenticated: update locally
-      // if (!auth.isAuthenticated) {
-      //   if (!this.workInfos.has(workplace)) {
-      //     this.workInfos.set(workplace, { payRates: new Set<number>() });
-      //   }
-      //   this.workInfos.get(workplace)!.payRates.add(payRate);
-      //   return;
-      // }
-
-      // // Authenticated: call API, which returns the workplace with just-added payRate
-      // try {
-      //   const createdWorkInfo = await api.prevWorkInfos.create(workplace, payRate);
-
-      //   if (
-      //     typeof createdWorkInfo.workplace !== 'string' ||
-      //     !Array.isArray(createdWorkInfo.payRates) ||
-      //     createdWorkInfo.payRates.length !== 1 ||
-      //     isNaN(Number(createdWorkInfo.payRates[0]))
-      //   ) {
-      //     throw new Error('Invalid work info returned from server. Response: ' + JSON.stringify(createdWorkInfo));
-      //   }
-
-      //   const createdPayRate = Number(createdWorkInfo.payRates[0]);
-
-      //   if (!this.workInfos.has(workplace)) {
-      //     this.workInfos.set(workplace, { payRates: new Set<number>() });
-      //   }
-      //   this.workInfos.get(workplace)!.payRates.add(createdPayRate);
-      // } catch (error: any) {
-      //   throw new Error(
-      //     'Failed to add previous work info: ' + (error && error.message ? error.message : String(error))
-      //   );
-      // }
     },
 
     async delete(workplace: string, payRate?: number): Promise<void> {
-      // const auth = useAuthStore();
-
-      // if (auth.isAuthenticated) {
-      //   try {
-      //     if (typeof payRate === 'number') {
-      //       await api.prevWorkInfos.delete(workplace, payRate);
-      //     } else {
-      //       await api.prevWorkInfos.delete(workplace);
-      //     }
-      //   } catch (error: any) {
-      //     this.error = error && error.message ? error.message : String(error);
-      //     // fall through to local update to keep UI responsive
-      //   }
-      // }
-
       await withStatus(this, async () => {
-        // Local update
-        if (typeof payRate === 'number') {
-          if (this.workInfos.get(workplace)) {
-            this.workInfos.get(workplace)!.payRates.delete(Number(payRate));
-            if (this.workInfos.get(workplace)!.payRates.size === 0) {
-              this.workInfos.delete(workplace);
-            }
+        // Remote update
+        const auth = useAuthStore();
+
+        if (auth.isAuthenticated) {
+          try {
+            await api.workInfos.delete(workplace, payRate);
+
+            await this.fetch(); // Refresh from server (delete may affect the whole workInfo or just one pay rate)
+          } catch (error: any) {
+            throw new Error('Failed to delete work info: ' + (error?.message ?? String(error)));
           }
         }
+
+        // Local update
+        if (payRate === undefined) {
+          this.workInfos.delete(workplace);
+          return;
+        }
+
+        this.workInfos.get(workplace)?.payRates.delete(Number(payRate));
       });
     },
 

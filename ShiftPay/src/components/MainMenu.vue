@@ -202,6 +202,8 @@ export default {
     async handleLogin() {
       await this.authStore.login();
       this.shiftsStore.fetch();
+      this.workInfosStore.fetch();
+      this.shiftTemplatesStore.fetch();
     }
   }
 };

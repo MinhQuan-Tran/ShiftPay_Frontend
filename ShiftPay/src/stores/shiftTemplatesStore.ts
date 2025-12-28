@@ -14,6 +14,7 @@ export const useShiftTemplatesStore = defineStore('shiftTemplates', {
   actions: {
     async fetch() {
       await withStatus(this, async () => {
+        // TODO: Finish API integration
         try {
           const rawData = localStorage.getItem('shiftTemplates') || '{}';
 

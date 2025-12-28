@@ -25,7 +25,7 @@ export default {
   align-items: center;
   background: color-mix(in oklab, var(--background-color) 70%, transparent);
   backdrop-filter: blur(2px);
-  z-index: 5;
+  z-index: 1;
 }
 
 .spinner {

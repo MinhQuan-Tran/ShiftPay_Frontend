@@ -120,7 +120,7 @@ export const api = {
 
       if (payRate !== undefined) queryParams.payRate = payRate;
 
-      return createRequest('workInfos', { method: 'DELETE', queryParams });
+      return createRequest(`workInfos/${workplace}`, { method: 'DELETE', queryParams });
     }
   }
 

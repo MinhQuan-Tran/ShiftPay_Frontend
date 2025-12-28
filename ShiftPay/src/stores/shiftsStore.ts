@@ -48,8 +48,8 @@ export const useShiftsStore = defineStore('shifts', {
           return (
             // 'startTime' is before the next day of the selected date
             new Date(shift.startTime) < endTime &&
-            // 'endTime' is after the start of the selected date
-            new Date(shift.endTime) > startTime
+            // 'endTime' is at or after the start of the selected date
+            new Date(shift.endTime) >= startTime
           );
         });
       };
@@ -104,16 +104,17 @@ export const useShiftsStore = defineStore('shifts', {
     // TODO: Add parameters for filtering
     async fetch(): Promise<void> {
       await withStatus(this, async () => {
-        const authStore = useAuthStore();
-        try {
-          let rawData = JSON.parse(localStorage.getItem('shifts') || localStorage.getItem('entries') || '[]');
+        let parsedData = JSON.parse(localStorage.getItem('shifts') || localStorage.getItem('entries') || '[]');
 
-          // API if authenticated; otherwise localStorage
+        try {
+          const authStore = useAuthStore();
+
           if (authStore.isAuthenticated) {
-            rawData = await api.shifts.fetch();
+            parsedData = await api.shifts.fetch();
           }
 
-          const parsed = Shift.parseAll(rawData);
+          // Parse & Validate
+          const parsed = Shift.parseAll(parsedData);
 
           this.shifts = parsed.shifts;
           if (!parsed.success) {

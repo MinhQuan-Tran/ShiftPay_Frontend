@@ -310,7 +310,7 @@ export default {
           ? Array.from(workInfosStore.workInfos.get(formData.workplace)?.payRates ?? []).map((pr) => pr.toString())
           : []
           "
-        @delete-item="formData.workplace && workInfosStore.workInfos.get(formData.workplace)?.payRates?.delete(parseFloat($event))"
+        @delete-item="payRate => formData.workplace ? workInfosStore.delete(formData.workplace, Number(payRate)) : null"
         deletable>
         <input type="number" id="pay-rate" name="payRate" placeholder="e.g. 23.23" v-model="formData.payRate"
           step="0.01" min="0" max="1000" required />
