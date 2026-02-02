@@ -1,4 +1,4 @@
-# ShiftPay - Web App
+# ShiftPay - Frontend
 
 ## Live Demo
 
