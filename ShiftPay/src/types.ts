@@ -1,6 +1,14 @@
+import type Shift from './models/Shift';
+
 export type WorkInfo = {
   payRates: Set<number>;
 };
+
+export interface ShiftTemplate {
+  id: string;
+  templateName: string;
+  shift: Shift;
+}
 
 export type Day = {
   dayStartTime: Date;

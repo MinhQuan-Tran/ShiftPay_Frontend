@@ -106,26 +106,21 @@ export const useShiftsStore = defineStore('shifts', {
       await withStatus(this, async () => {
         let parsedData = JSON.parse(localStorage.getItem('shifts') || localStorage.getItem('entries') || '[]');
 
-        try {
-          const authStore = useAuthStore();
+        const authStore = useAuthStore();
 
-          if (authStore.isAuthenticated) {
-            parsedData = await api.shifts.fetch();
-          }
-
-          // Parse & Validate
-          const parsed = Shift.parseAll(parsedData);
-
-          this.shifts = parsed.shifts;
-          if (!parsed.success) {
-            alert('Some shifts could not be loaded.');
-          }
-
-          localStorage.removeItem('entries'); // Remove old key
-        } catch (error: any) {
-          console.error(error);
-          throw new Error('Failed to fetch shifts: ' + (error && error.message ? error.message : String(error)));
+        if (authStore.isAuthenticated) {
+          parsedData = await api.shifts.fetch();
         }
+
+        // Parse & Validate
+        const parsed = Shift.parseAll(parsedData);
+
+        this.shifts = parsed.shifts;
+        if (!parsed.success) {
+          alert('Some shifts could not be loaded.');
+        }
+
+        localStorage.removeItem('entries'); // Remove old key
       });
     },
 
@@ -160,23 +155,19 @@ export const useShiftsStore = defineStore('shifts', {
           return;
         }
 
-        try {
-          if (validatedShifts.length === 1) {
-            // Single-shift create
-            const created = await api.shifts.create(validatedShifts[0]);
-            console.log('Created shift from API:', created);
-            const parsed = Shift.parse(created);
-            this.shifts.push(parsed);
-          } else {
-            // Batch create
-            const createdBatch = await api.shifts.createBatch(validatedShifts);
-            console.log('Created shifts from API (batch):', createdBatch);
+        if (validatedShifts.length === 1) {
+          // Single-shift create
+          const created = await api.shifts.create(validatedShifts[0]);
+          console.log('Created shift from API:', created);
+          const parsed = Shift.parse(created);
+          this.shifts.push(parsed);
+        } else {
+          // Batch create
+          const createdBatch = await api.shifts.createBatch(validatedShifts);
+          console.log('Created shifts from API (batch):', createdBatch);
 
-            const parsedBatch = Shift.parseAll(createdBatch).shifts;
-            this.shifts.push(...parsedBatch);
-          }
-        } catch (error: any) {
-          throw new Error('Some shifts could not be created — ' + (error?.message ?? String(error)));
+          const parsedBatch = Shift.parseAll(createdBatch).shifts;
+          this.shifts.push(...parsedBatch);
         }
       });
     },
@@ -205,17 +196,12 @@ export const useShiftsStore = defineStore('shifts', {
           return;
         }
 
-        try {
-          const updated = await api.shifts.update(id, shiftToUpdate);
+        const updated = await api.shifts.update(id, shiftToUpdate);
 
-          const index = this.shifts.findIndex((shift) => shift.id === updated.id);
+        const index = this.shifts.findIndex((shift) => shift.id === updated.id);
 
-          // No need to check for -1; if not found, js will add it
-          this.shifts[index] = Shift.parse(updated);
-          return;
-        } catch (error: unknown) {
-          throw new Error('Failed to update shift: ' + (error instanceof Error ? error.message : String(error)));
-        }
+        // No need to check for -1; if not found, js will add it
+        this.shifts[index] = Shift.parse(updated);
       });
     },
 
@@ -224,11 +210,7 @@ export const useShiftsStore = defineStore('shifts', {
         const authStore = useAuthStore();
 
         if (authStore.isAuthenticated) {
-          try {
-            await api.shifts.delete(input);
-          } catch (error: any) {
-            throw new Error('Failed to delete shift: ' + (error && error.message ? error.message : String(error)));
-          }
+          await api.shifts.delete(input);
         }
 
         // Single shift ID

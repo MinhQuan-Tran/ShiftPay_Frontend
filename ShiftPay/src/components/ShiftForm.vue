@@ -13,7 +13,6 @@ import { useShiftSessionStore } from '@/stores/shiftSessionStore';
 import ButtonConfirm from './ButtonConfirm.vue';
 import ComboBox from './ComboBox.vue';
 import InputLabel from './InputLabel.vue';
-import LoadingOverlay from './LoadingOverlay.vue';
 
 export default {
   props: {
@@ -39,7 +38,8 @@ export default {
       deleteShiftTemplate: false,
       recurringShift: false,
       shiftName: '',
-      hiddenElements: [] as Element[] // Elements to hide when holding a button in action bar
+      hiddenElements: [] as Element[], // Elements to hide when holding a button in action bar
+      currentAction: '', // Track the current action being performed for loading state
     };
   },
 
@@ -60,7 +60,9 @@ export default {
       alert(message);
     },
 
-    quickAddShift(shift: Shift) {
+    async quickAddShift(shift: Shift) {
+      console.log('Quick adding shift:', shift);
+
       const newShift = new Shift({
         workplace: shift.workplace,
         payRate: shift.payRate,
@@ -78,7 +80,7 @@ export default {
       );
       newShift.endTime.setTime(newShift.startTime.getTime() + duration);
 
-      this.shiftsStore.add(newShift);
+      await this.shiftsStore.add(newShift);
 
       const form = this.$refs.shiftForm as HTMLFormElement;
       form.reset();
@@ -104,10 +106,11 @@ export default {
       }
     },
 
-    shiftAction(event: Event) {
+    async shiftAction(event: Event) {
       const form = event.currentTarget as HTMLFormElement;
 
       const action = ((event as SubmitEvent)?.submitter as HTMLButtonElement).value;
+      this.currentAction = action;
 
       // Match action with form data
       switch (action) {
@@ -159,10 +162,24 @@ export default {
           }
 
           // Batch the reactive update (one change, multiple shifts) -> better performance
-          this.shiftsStore.add(newShifts);
+          await this.shiftsStore.add(newShifts).catch((error) => {
+            alert('Failed to add shift(s): ' + error);
+            throw error;
+          });
 
-          // Add workplace and pay rate to workInfos
-          this.workInfosStore.add(shift.workplace, shift.payRate);
+          // Add workplace and pay rate to workInfos (same info for multiple shifts)
+          this.workInfosStore.add(shift.workplace, shift.payRate).catch((error) => {
+            alert('Failed to add work info: ' + error);
+            // Continue even if it fails
+          });
+
+          // Add shift template if needed
+          if (this.saveShiftTemplate) {
+            this.shiftTemplatesStore.add(this.shiftName, shift).catch((error) => {
+              alert('Failed to add shift template: ' + error);
+              // Continue even if it fails
+            });
+          }
 
           // Remove check in time
           if (action === 'check in') {
@@ -178,7 +195,10 @@ export default {
             alert('Invalid shift');
             throw new Error('Invalid shift');
           }
-          this.shiftsStore.update(shift.id, shift);
+          await this.shiftsStore.update(shift.id, shift).catch((error) => {
+            alert('Failed to edit shift: ' + error);
+            throw error;
+          });
 
           break;
         }
@@ -189,7 +209,10 @@ export default {
             throw new Error('Invalid shift');
           }
 
-          this.shiftsStore.delete(this.formData.id);
+          await this.shiftsStore.delete(this.formData.id).catch((error) => {
+            alert('Failed to delete shift: ' + error);
+            throw error;
+          });
           break;
 
         case 'remove check in':
@@ -201,6 +224,7 @@ export default {
           throw new Error('Invalid action');
       }
 
+      this.currentAction = '';
       form.reset();
 
       const dialog = form.closest('dialog') as HTMLDialogElement;
@@ -212,24 +236,6 @@ export default {
       if (this.$options.data) {
         Object.assign(this.$data, (this.$options.data as any).call(this, this));
       }
-    },
-
-    // For delete button hold
-    focusButtonConfirm(isHolding: boolean) {
-      if (isHolding) {
-        // Hide all elements except this button and the bar
-        return (this.$refs.actionBar as HTMLElement)
-          ?.querySelectorAll('*:not(.slider:has(.button-confirm.active))')
-          .forEach((el) => {
-            this.hiddenElements.push(el);
-            el.classList.add('hide');
-          });
-      }
-
-      this.hiddenElements.forEach((el) => {
-        el.classList.remove('hide');
-      });
-      this.hiddenElements = [];
     },
 
     toDateTimeLocal(date: Date | undefined) {
@@ -254,8 +260,7 @@ export default {
   components: {
     ButtonConfirm,
     ComboBox,
-    InputLabel,
-    LoadingOverlay
+    InputLabel
   },
 
   watch: {
@@ -268,17 +273,13 @@ export default {
 
 <template>
   <form @submit.prevent="shiftAction" @reset.prevent="resetForm" ref="shiftForm">
-    <LoadingOverlay :active="shiftsStore.status === STATUS.Loading ||
-      workInfosStore.status === STATUS.Loading ||
-      shiftTemplatesStore.status === STATUS.Loading
-      " />
     <input type="hidden" name="id" v-model="formData.id" />
 
     <InputLabel label-text="Shift Templates" v-if="action === 'add'" v-model:toggle-value="deleteShiftTemplate"
-      toggle-color="var(--danger-color)" sub-text="Delete">
+      toggle-color="var(--danger-color)" sub-text="Delete" :loading="shiftTemplatesStore.status === STATUS.Loading">
       <div class="shift-templates">
         <button v-for="[name, template] in shiftTemplatesStore.templates" :key="name"
-          @click="deleteShiftTemplate ? shiftTemplatesStore.delete(name) : quickAddShift(template as Shift)"
+          @click="deleteShiftTemplate ? shiftTemplatesStore.delete(name) : quickAddShift(template.shift as Shift)"
           type="button" class="shift-info">
           <div class="name">{{ name }}</div>
         </button>
@@ -294,23 +295,24 @@ export default {
         required />
     </InputLabel>
 
-    <InputLabel label-text="Workplace" for-id="workplace">
+    <InputLabel label-text="Workplace" for-id="workplace" :loading="workInfosStore.status === STATUS.Loading">
       <ComboBox :value="formData?.workplace || ''"
         @update:value="newValue => { formData.workplace = newValue; formData.payRate = undefined; }"
-        :list="Array.from(workInfosStore.workInfos.keys())" @delete-item="workInfo => workInfosStore.delete(workInfo)"
+        :list="Array.from(workInfosStore.workInfos.keys())"
+        @delete-item="workInfo => workInfosStore.delete(workInfo).catch((error) => alert('Failed to delete workplace \n' + error.message))"
         deletable>
         <input type="search" id="workplace" name="workplace" placeholder="e.g. Company Name"
           v-model="formData.workplace" required />
       </ComboBox>
     </InputLabel>
 
-    <InputLabel label-text="Pay Rate" for-id="pay-rate">
+    <InputLabel label-text="Pay Rate" for-id="pay-rate" :loading="workInfosStore.status === STATUS.Loading">
       <ComboBox :value="formData.payRate ? formData.payRate.toString() : ''"
         @update:value="(newValue: number | undefined) => (formData.payRate = Number(newValue))" :list="formData.workplace && workInfosStore.workInfos.get(formData.workplace)?.payRates
           ? Array.from(workInfosStore.workInfos.get(formData.workplace)?.payRates ?? []).map((pr) => pr.toString())
           : []
           "
-        @delete-item="payRate => formData.workplace ? workInfosStore.delete(formData.workplace, Number(payRate)) : null"
+        @delete-item="payRate => formData.workplace ? workInfosStore.delete(formData.workplace, Number(payRate)).catch((error) => alert('Failed to delete pay rate \n' + error.message)) : null"
         deletable>
         <input type="number" id="pay-rate" name="payRate" placeholder="e.g. 23.23" v-model="formData.payRate"
           step="0.01" min="0" max="1000" required />
@@ -399,23 +401,36 @@ export default {
     <div ref="actionBar" class="actions">
       <!-- Edit -->
       <template v-if="action == 'edit'">
-        <ButtonConfirm @is-holding="focusButtonConfirm" type="submit" name="action" value="delete" class="danger"
-          id="delete-shift-btn" formnovalidate>
-          Delete
+        <ButtonConfirm type="submit" name="action" value="delete"
+          :class="['danger', { focus: currentAction === 'delete' }]" id="delete-shift-btn" formnovalidate
+          :disabled="shiftsStore.status === STATUS.Loading">
+          <span v-if="currentAction === 'delete' && shiftsStore.status === STATUS.Loading"
+            class="button-spinner"></span>
+          {{ currentAction === 'delete' && shiftsStore.status === STATUS.Loading ? 'Deleting...' : 'Delete' }}
         </ButtonConfirm>
-        <button type="submit" name="action" value="edit" class="warning" id="edit-shift-btn">Edit Shift</button>
+
+        <button type="submit" name="action" value="edit" :class="['warning', { focus: currentAction === 'edit' }]"
+          id="edit-shift-btn" :disabled="shiftsStore.status === STATUS.Loading">
+          <span v-if="currentAction === 'edit' && shiftsStore.status === STATUS.Loading" class="button-spinner"></span>
+          {{ currentAction === 'edit' && shiftsStore.status === STATUS.Loading ? 'Saving...' : 'Edit Shift' }}
+        </button>
       </template>
 
       <!-- Add, Check in/out -->
       <template v-else>
-        <ButtonConfirm v-if="action == 'check in/out'" @is-holding="focusButtonConfirm" type="submit" name="action"
-          value="remove check in" class="danger" id="remove-check-in-out-btn" formnovalidate>
+        <ButtonConfirm v-if="action == 'check in/out'" type="submit" name="action" value="remove check in"
+          :class="['danger', { focus: currentAction === 'remove check in' }]" id="remove-check-in-out-btn"
+          formnovalidate>
           Remove
         </ButtonConfirm>
 
-        <button type="submit" name="action" value="add" :class="['primary', { active: saveShiftTemplate }]"
-          id="add-shift-btn">
-          {{ saveShiftTemplate ? 'Save & ' : '' }}Add Shift
+        <button type="submit" name="action" value="add"
+          :class="['primary', { focus: currentAction === 'add', active: saveShiftTemplate }]" id="add-shift-btn"
+          :disabled="shiftsStore.status === STATUS.Loading">
+          <span v-if="currentAction === 'add' && shiftsStore.status === STATUS.Loading" class="button-spinner"></span>
+          {{ currentAction === 'add' && shiftsStore.status === STATUS.Loading ?
+            'Adding...' :
+            (saveShiftTemplate ? 'Save & ' : '') + 'Add Shift' }}
         </button>
       </template>
     </div>
@@ -469,13 +484,17 @@ form {
   flex-grow: 0;
 }
 
-.actions:has(.hide) {
+.actions:has(.focus) {
   gap: 0;
 }
 
-.hide {
+.actions:has(.focus)>*:not(.focus) {
   max-width: 0;
   padding: 0;
+}
+
+.action .focus {
+  flex-grow: 1 !important;
 }
 
 .unpaid-breaks {
@@ -531,5 +550,28 @@ form {
 
 .recurring-inputs input#recurring-end-date {
   grid-area: end-date;
+}
+
+.button-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 0.5em;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 </style>

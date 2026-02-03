@@ -20,6 +20,10 @@ export default {
     subText: {
       type: String,
       default: ''
+    },
+    loading: {
+      type: Boolean,
+      default: false
     }
   },
 
@@ -28,10 +32,11 @@ export default {
 </script>
 
 <template>
-  <div class="input" :for="forId">
+  <div :class="['input', { 'is-loading': loading }]" :for="forId">
     <!-- Intentionally not using "for" to let user clicks outside to lose input focus -->
     <div class="input-header">
       <label>{{ labelText }}</label>
+      <span v-if="loading" class="loading-spinner"></span>
       <label v-if="toggleValue !== undefined" class="switch">
         <input type="checkbox" :checked="toggleValue" @input="$emit('update:toggleValue', !toggleValue)" />
         <span class="slider round"></span>
@@ -97,16 +102,16 @@ label {
   transition: 0.3s;
 }
 
-input:checked + .slider {
+input:checked+.slider {
   background-color: v-bind(toggleColor);
 }
 
-input:focus + .slider {
+input:focus+.slider {
   transition: outline 0s;
   outline: 2px solid var(--primary-color);
 }
 
-input:checked + .slider:before {
+input:checked+.slider:before {
   left: calc(100% - 0.8em - 0.2em);
 }
 
@@ -122,5 +127,25 @@ input:checked + .slider:before {
 .sub-text {
   color: var(--color-grey);
   font-size: small;
+}
+
+.input.is-loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.loading-spinner {
+  width: 0.8em;
+  height: 0.8em;
+  border: 2px solid var(--input-background-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

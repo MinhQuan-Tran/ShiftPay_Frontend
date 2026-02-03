@@ -1,13 +1,19 @@
 import { defineStore } from 'pinia';
 import { api } from '@/api';
 import { useAuthStore } from './authStore';
-import type { WorkInfo } from '@/types';
 import { STATUS, type Status } from '@/types';
 import { withStatus } from '@/utils';
 
+export interface WorkInfoEntry {
+  id: string;
+  workplace: string;
+  payRates: Set<number>;
+}
+
 export const useWorkInfosStore = defineStore('workInfos', {
   state: () => ({
-    workInfos: new Map<string, WorkInfo>(),
+    /** Map keyed by workplace, storing id and payRates */
+    workInfos: new Map<string, WorkInfoEntry>(),
     status: STATUS.Ready as Status
   }),
 
@@ -16,24 +22,27 @@ export const useWorkInfosStore = defineStore('workInfos', {
       await withStatus(this, async () => {
         let parsedData = JSON.parse(localStorage.getItem('workInfos') || localStorage.getItem('prevWorkInfos') || '[]');
 
-        try {
-          const auth = useAuthStore();
+        const auth = useAuthStore();
 
-          if (auth.isAuthenticated) {
-            parsedData = await api.workInfos.fetch();
-          }
-          // Parse & Validate
-          this.workInfos = new Map<string, WorkInfo>(
-            parsedData.map((workInfo: any) => [workInfo.workplace, { payRates: new Set(workInfo.payRates) }])
-          );
-
-          localStorage.removeItem('prevWorkInfos'); // Remove old key
-        } catch (error: any) {
-          console.error(error);
-          throw new Error(
-            'Failed to fetch previous work infos: ' + (error && error.message ? error.message : String(error))
-          );
+        if (auth.isAuthenticated) {
+          parsedData = await api.workInfos.fetch();
         }
+
+        console.log('Fetched work infos data:', parsedData);
+
+        // Parse & Validate - store id, workplace, and payRates
+        this.workInfos = new Map<string, WorkInfoEntry>(
+          parsedData.map((workInfo: any) => [
+            workInfo.workplace,
+            {
+              id: workInfo.id,
+              workplace: workInfo.workplace,
+              payRates: new Set(workInfo.payRates ?? [])
+            }
+          ])
+        );
+
+        localStorage.removeItem('prevWorkInfos'); // Remove old key
       });
     },
 
@@ -54,39 +63,52 @@ export const useWorkInfosStore = defineStore('workInfos', {
         const auth = useAuthStore();
 
         if (auth.isAuthenticated) {
-          try {
-            const workInfo = await api.workInfos.create(workplace, [payRate]);
+          // Pass existing id if updating, so server merges payRates
+          const existingEntry = this.workInfos.get(workplace);
+          const workInfo = await api.workInfos.createOrUpdate(workplace, [payRate], existingEntry?.id);
 
-            // Replace with server response to ensure consistency
-            this.workInfos.set(workInfo.workplace, { payRates: new Set(workInfo.payRates) });
+          // Replace with server response to ensure consistency
+          this.workInfos.set(workInfo.workplace, {
+            id: workInfo.id,
+            workplace: workInfo.workplace,
+            payRates: new Set(workInfo.payRates ?? [])
+          });
 
-            return;
-          } catch (error: any) {
-            throw new Error('Failed to add work info: ' + (error?.message ?? String(error)));
-          }
+          return;
         }
 
         // Local update
-        if (!this.workInfos.has(workplace)) {
-          this.workInfos.set(workplace, { payRates: new Set<number>() });
+        const existingEntry = this.workInfos.get(workplace);
+        if (!existingEntry) {
+          this.workInfos.set(workplace, {
+            id: crypto.randomUUID(),
+            workplace,
+            payRates: new Set<number>([payRate])
+          });
+        } else {
+          existingEntry.payRates.add(payRate);
         }
-        this.workInfos.get(workplace)!.payRates.add(payRate);
       });
     },
 
+    /**
+     * Delete a work info by workplace name, or remove a specific pay rate.
+     * Uses the stored ID for the API call.
+     */
     async delete(workplace: string, payRate?: number): Promise<void> {
       await withStatus(this, async () => {
-        // Remote update
         const auth = useAuthStore();
+        const entry = this.workInfos.get(workplace);
 
+        // Remote update
         if (auth.isAuthenticated) {
-          try {
-            await api.workInfos.delete(workplace, payRate);
-
-            await this.fetch(); // Refresh from server (delete may affect the whole workInfo or just one pay rate)
-          } catch (error: any) {
-            throw new Error('Failed to delete work info: ' + (error?.message ?? String(error)));
+          if (!entry?.id) {
+            throw new Error(`Cannot delete: "${workplace}" not found`);
           }
+
+          await api.workInfos.delete(entry.id, payRate);
+          await this.fetch(); // Refresh from server
+          return;
         }
 
         // Local update
@@ -95,29 +117,24 @@ export const useWorkInfosStore = defineStore('workInfos', {
           return;
         }
 
-        this.workInfos.get(workplace)?.payRates.delete(Number(payRate));
+        entry?.payRates.delete(Number(payRate));
       });
     },
 
     /**
      * Persist to localStorage on ANY state change (detached subscription).
      * Mirrors shiftStore's auto-persist pattern.
+     * Serializes as array of WorkInfoDTO-like objects for consistency with API format.
      */
     enableAutoPersist(): void {
       this.$subscribe(
         function (_mutation, state) {
-          localStorage.setItem(
-            'workInfos',
-            JSON.stringify(
-              Array.from(state.workInfos, (workInfo) => {
-                console.log(workInfo);
-                return {
-                  workplace: workInfo[0],
-                  payRates: Array.from(workInfo[1].payRates)
-                };
-              })
-            )
-          );
+          const serialized = Array.from(state.workInfos.values()).map((entry) => ({
+            id: entry.id,
+            workplace: entry.workplace,
+            payRates: Array.from(entry.payRates)
+          }));
+          localStorage.setItem('workInfos', JSON.stringify(serialized));
         },
         { detached: true }
       );

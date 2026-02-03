@@ -51,16 +51,20 @@ async function createRequest(resource: ApiResource, options: RequestOptions) {
       body: options.body ? JSON.stringify(options.body) : undefined
     });
 
+    // Handle HTTP errors (4xx, 5xx)
     if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(`API ${options.method} ${url} failed: ${res.status} ${res.statusText} - ${errorText}`);
+      const errorText = await res.text().catch(() => res.statusText);
+      throw new Error(`${res.status} ${res.statusText}: ${errorText}`);
     }
 
+    // Parse JSON response if applicable
     const contentType = res.headers.get('Content-Type');
     return contentType?.includes('application/json') ? await res.json() : null;
   } catch (err) {
-    console.error(`[API Error] ${options.method} ${url}`, err);
-    throw err;
+    if (err instanceof TypeError) {
+      throw new Error('Network error: Please check your internet connection');
+    }
+    throw err instanceof Error ? err : new Error('API request failed: ' + String(err));
   }
 }
 
@@ -105,36 +109,50 @@ export const api = {
   // },
 
   workInfos: {
-    async fetch() {
-      return createRequest('workInfos', { method: 'GET' });
+    async fetch(id?: string) {
+      return createRequest(`workInfos/${id ?? ''}`, { method: 'GET' });
     },
 
-    async create(workplace: string, payRates: number[]) {
-      return createRequest('workInfos', { method: 'POST', body: { workplace, payRates } });
+    /**
+     * Create or update a work info (upsert by id if provided).
+     * If id is provided and exists, updates (merges payRates); otherwise creates.
+     */
+    async createOrUpdate(workplace: string, payRates: number[], id?: string) {
+      return createRequest('workInfos', { method: 'POST', body: { id, workplace, payRates } });
     },
 
-    // No update
+    /**
+     * Delete a work info by ID, or remove a specific pay rate.
+     * @param id - The work info ID
+     * @param payRate - Optional: if provided, only removes this pay rate from the list
+     */
+    async delete(id: string, payRate?: number) {
+      const queryParams: QueryParams | undefined = payRate !== undefined ? { payRate } : undefined;
+      return createRequest(`workInfos/${encodeURIComponent(id)}`, { method: 'DELETE', queryParams });
+    }
+  },
 
-    async delete(workplace: string, payRate?: number) {
-      const queryParams: QueryParams = { workplace };
+  shiftTemplates: {
+    async fetch(id?: string) {
+      return createRequest(`shiftTemplates/${id ?? ''}`, { method: 'GET' });
+    },
 
-      if (payRate !== undefined) queryParams.payRate = payRate;
+    /**
+     * Create or update a shift template (upsert by templateName).
+     * If a template with the same templateName exists, it updates; otherwise creates.
+     */
+    async createOrUpdate(templateName: string, shift: Shift) {
+      return createRequest('shiftTemplates', {
+        method: 'POST',
+        body: {
+          ...shift.toDTO(),
+          templateName
+        }
+      });
+    },
 
-      return createRequest(`workInfos/${workplace}`, { method: 'DELETE', queryParams });
+    async delete(id: string) {
+      return createRequest(`shiftTemplates/${encodeURIComponent(id)}`, { method: 'DELETE' });
     }
   }
-
-  // shiftTemplates: {
-  //   async fetch() {
-  //     return createRequest('shiftTemplates', { method: 'GET' });
-  //   },
-
-  //   async create(shift: Shift) {
-  //     return createRequest('shiftTemplates', { method: 'POST', body: shift.toDTO() });
-  //   },
-
-  //   async delete(id: string) {
-  //     return createRequest(`shiftTemplates/${id}`, { method: 'DELETE' });
-  //   }
-  // }
 };

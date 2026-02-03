@@ -27,9 +27,8 @@ export default {
       today,
       monthChange: 0,
       spaceBetweenDay: '0px',
-      selectedStatOption: 'income' as keyof typeof STAT_OPTIONS,
       // type as the union of all subcategory keys across STAT_OPTIONS
-      selectedSubcategoryOption: 'beforeTax' as keyof (typeof STAT_OPTIONS)[keyof typeof STAT_OPTIONS],
+      selectedSubCategoryOption: 'beforeTax' as { [K in keyof typeof STAT_OPTIONS]: keyof (typeof STAT_OPTIONS)[K] }[keyof typeof STAT_OPTIONS],
       STAT_OPTIONS
     };
   },
@@ -39,8 +38,18 @@ export default {
   computed: {
     ...mapStores(useShiftsStore),
 
-    statSubcategoryOptions() {
-      return this.STAT_OPTIONS[this.selectedStatOption];
+    selectedStatCategory(): keyof typeof STAT_OPTIONS {
+      const selected = this.selectedSubCategoryOption;
+      const categories = Object.keys(this.STAT_OPTIONS) as Array<keyof typeof STAT_OPTIONS>;
+
+      for (const category of categories) {
+        if (selected in this.STAT_OPTIONS[category]) {
+          return category;
+        }
+      }
+
+      // Fallback (shouldn't happen unless STAT_OPTIONS changes)
+      return categories[0] ?? 'income';
     },
 
     calendar() {
@@ -126,30 +135,29 @@ export default {
     },
 
     formatStat(stats: Stats) {
-      const category = this.selectedStatOption;
-      const sub = this.selectedSubcategoryOption;
+      const category = this.selectedStatCategory;
+      const sub = this.selectedSubCategoryOption;
 
       switch (category) {
-        case 'income':
+        case 'income': {
+          if (sub in stats.income) {
+            return currencyFormat(stats.income[sub as keyof Stats['income']]);
+          }
+
           return currencyFormat(stats.income.beforeTax);
+        }
 
         case 'hours': {
-          const duration = stats.hours[sub] as any;
-          if (duration && typeof duration.format === 'function') {
+          if (sub in stats.hours) {
+            const duration = stats.hours[sub as keyof Stats['hours']];
             return duration.format();
           }
-          return String(duration);
+          return '';
         }
 
         default:
           return '';
       }
-    }
-  },
-
-  watch: {
-    selectedStatOption(newVal: keyof typeof STAT_OPTIONS) {
-      this.selectedSubcategoryOption = Object.keys(this.STAT_OPTIONS[newVal])[0] as keyof (typeof STAT_OPTIONS)[keyof typeof STAT_OPTIONS];
     }
   },
 
@@ -217,14 +225,12 @@ export default {
       </div>
     </div>
 
-    <select v-model="selectedStatOption" class="category">
-      <option v-for="(_, category) in STAT_OPTIONS" :key="category" :value="category">{{ category }}</option>
-    </select>
-
-    <select v-model="selectedSubcategoryOption" class="subcategory">
-      <option v-for="(subcat, index) in statSubcategoryOptions" :key="index" :value="index">
-        {{ (subcat as any).label }}
-      </option>
+    <select v-model="selectedSubCategoryOption" class="category">
+      <optgroup v-for="(subCategory, category) in STAT_OPTIONS" :key="category" :label="category">
+        <option v-for="(subcat, subcatKey) in subCategory" :key="subcatKey" :value="subcatKey">
+          {{ subcat.label }}
+        </option>
+      </optgroup>
     </select>
 
     <div class="stats">
@@ -245,8 +251,8 @@ export default {
   grid-template-rows: repeat(2, 2.5rem) 1fr;
   column-gap: var(--padding-small);
   grid-template-areas:
-    'month-nav category'
-    'weekdays subcategory'
+    'month-nav month-nav'
+    'weekdays category'
     'calendar stats';
 }
 
@@ -357,6 +363,7 @@ export default {
   font-size: smaller;
 }
 
+/* TODO: use new custom select options */
 .category,
 .subcategory {
   width: 100%;
