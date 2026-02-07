@@ -17,6 +17,7 @@ import WeekSchedule from '@/components/WeekSchedule.vue';
 import DaySchedule from '@/components/DaySchedule.vue';
 import BaseDialog from '@/components/BaseDialog.vue';
 import SyncDataDialog from '@/components/SyncDataDialog.vue';
+import ImportDataDialog from '@/components/ImportDataDialog.vue';
 
 export default {
   data() {
@@ -60,6 +61,10 @@ export default {
       console.log('Showing sync dialog');
       (this.$refs['sync-dialog'] as any).showModal();
     },
+    showImportDialog() {
+      this.menuOpened = false;
+      (this.$refs['import-dialog'] as any).showModal();
+    },
     handleSyncComplete() {
       // Clear the pending flag so stores fetch from server
       localStorage.removeItem('syncPending');
@@ -101,7 +106,8 @@ export default {
     WeekSchedule,
     DaySchedule,
     BaseDialog,
-    SyncDataDialog
+    SyncDataDialog,
+    ImportDataDialog
   },
 
   async mounted() {
@@ -146,11 +152,12 @@ export default {
       <div class="bar"></div>
       <div class="bar"></div>
       <div class="bar"></div>
-      <MainMenu v-if="menuOpened" @login="handleLogin"></MainMenu>
+      <MainMenu v-if="menuOpened" @login="handleLogin" @import="showImportDialog"></MainMenu>
     </div>
   </div>
 
   <SyncDataDialog ref="sync-dialog" @complete="handleSyncComplete" />
+  <ImportDataDialog ref="import-dialog" />
 
   <WeekSchedule v-model:selected-date="selectedDate" />
   <hr />

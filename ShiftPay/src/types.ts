@@ -12,6 +12,17 @@ export interface ShiftTemplate {
   shift: Shift;
 }
 
+export interface ImportParsedData {
+  shifts: Shift[];
+  shiftErrors: string[];
+  templates: Map<string, Shift>;
+  templateErrors: string[];
+  workInfos: Map<string, WorkInfo>;
+  workInfoErrors: string[];
+  checkInTime: Date | null;
+  checkInTimeError: string | null;
+}
+
 export type Day = {
   dayStartTime: Date;
   dayEndTime: Date;
