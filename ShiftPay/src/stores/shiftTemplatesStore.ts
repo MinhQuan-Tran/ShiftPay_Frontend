@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { api } from '@/api';
+import api from '@/api';
 import { useAuthStore } from './authStore';
 import Shift from '@/models/Shift';
 import { STATUS, type Status, type ShiftTemplate } from '@/types';
@@ -17,8 +17,10 @@ export const useShiftTemplatesStore = defineStore('shiftTemplates', {
         let parsedData = JSON.parse(localStorage.getItem('shiftTemplates') || '[]');
 
         const authStore = useAuthStore();
+        const syncPending = localStorage.getItem('syncPending') === 'true';
 
-        if (authStore.isAuthenticated) {
+        // Use local data if not authenticated OR if sync is pending (user clicked "Decide Later")
+        if (authStore.isAuthenticated && !syncPending) {
           parsedData = await api.shiftTemplates.fetch();
         }
 

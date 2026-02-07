@@ -68,7 +68,7 @@ async function createRequest(resource: ApiResource, options: RequestOptions) {
   }
 }
 
-export const api = {
+const api = {
   shifts: {
     async fetch(id?: string, params?: QueryParams) {
       return createRequest(`shifts/${id ?? ''}`, { method: 'GET', queryParams: params });
@@ -118,7 +118,10 @@ export const api = {
      * If id is provided and exists, updates (merges payRates); otherwise creates.
      */
     async createOrUpdate(workplace: string, payRates: number[], id?: string) {
-      return createRequest('workInfos', { method: 'POST', body: { id, workplace, payRates } });
+      return createRequest('workInfos', {
+        method: 'POST',
+        body: { id, workplace, payRates }
+      });
     },
 
     /**
@@ -141,13 +144,10 @@ export const api = {
      * Create or update a shift template (upsert by templateName).
      * If a template with the same templateName exists, it updates; otherwise creates.
      */
-    async createOrUpdate(templateName: string, shift: Shift) {
+    async createOrUpdate(templateName: string, shift: Shift, id?: string) {
       return createRequest('shiftTemplates', {
         method: 'POST',
-        body: {
-          ...shift.toDTO(),
-          templateName
-        }
+        body: { id, templateName, ...shift.toDTO() }
       });
     },
 
@@ -156,3 +156,5 @@ export const api = {
     }
   }
 };
+
+export default api;

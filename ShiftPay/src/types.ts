@@ -1,6 +1,8 @@
 import type Shift from './models/Shift';
 
 export type WorkInfo = {
+  id: string;
+  workplace: string;
   payRates: Set<number>;
 };
 

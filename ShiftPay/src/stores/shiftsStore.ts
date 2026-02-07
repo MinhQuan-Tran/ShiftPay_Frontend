@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { api } from '@/api';
+import api from '@/api';
 import { useAuthStore } from './authStore';
 import Shift from '@/models/Shift';
 import Duration from '@/models/Duration';
@@ -107,8 +107,10 @@ export const useShiftsStore = defineStore('shifts', {
         let parsedData = JSON.parse(localStorage.getItem('shifts') || localStorage.getItem('entries') || '[]');
 
         const authStore = useAuthStore();
+        const syncPending = localStorage.getItem('syncPending') === 'true';
 
-        if (authStore.isAuthenticated) {
+        // Use local data if not authenticated OR if sync is pending (user clicked "Decide Later")
+        if (authStore.isAuthenticated && !syncPending) {
           parsedData = await api.shifts.fetch();
         }
 
@@ -121,6 +123,8 @@ export const useShiftsStore = defineStore('shifts', {
         }
 
         localStorage.removeItem('entries'); // Remove old key
+
+        console.log('Fetched shifts:', this.shifts);
       });
     },
 

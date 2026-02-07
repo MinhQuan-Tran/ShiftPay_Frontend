@@ -1,19 +1,13 @@
 import { defineStore } from 'pinia';
-import { api } from '@/api';
+import api from '@/api';
 import { useAuthStore } from './authStore';
-import { STATUS, type Status } from '@/types';
+import { STATUS, type Status, type WorkInfo } from '@/types';
 import { withStatus } from '@/utils';
-
-export interface WorkInfoEntry {
-  id: string;
-  workplace: string;
-  payRates: Set<number>;
-}
 
 export const useWorkInfosStore = defineStore('workInfos', {
   state: () => ({
     /** Map keyed by workplace, storing id and payRates */
-    workInfos: new Map<string, WorkInfoEntry>(),
+    workInfos: new Map<string, WorkInfo>(),
     status: STATUS.Ready as Status
   }),
 
@@ -23,15 +17,17 @@ export const useWorkInfosStore = defineStore('workInfos', {
         let parsedData = JSON.parse(localStorage.getItem('workInfos') || localStorage.getItem('prevWorkInfos') || '[]');
 
         const auth = useAuthStore();
+        const syncPending = localStorage.getItem('syncPending') === 'true';
 
-        if (auth.isAuthenticated) {
+        // Use local data if not authenticated OR if sync is pending (user clicked "Decide Later")
+        if (auth.isAuthenticated && !syncPending) {
           parsedData = await api.workInfos.fetch();
         }
 
         console.log('Fetched work infos data:', parsedData);
 
         // Parse & Validate - store id, workplace, and payRates
-        this.workInfos = new Map<string, WorkInfoEntry>(
+        this.workInfos = new Map<string, WorkInfo>(
           parsedData.map((workInfo: any) => [
             workInfo.workplace,
             {

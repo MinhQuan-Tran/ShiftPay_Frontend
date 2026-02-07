@@ -1,6 +1,8 @@
 <script lang="ts">
 import { mapStores } from 'pinia';
 
+import api from '@/api';
+
 import { useAuthStore } from '@/stores/authStore';
 import { useShiftsStore } from '@/stores/shiftsStore';
 import { useShiftTemplatesStore } from '@/stores/shiftTemplatesStore';
@@ -8,9 +10,11 @@ import { useWorkInfosStore } from '@/stores/workInfosStore';
 import { useShiftSessionStore } from '@/stores/shiftSessionStore';
 
 import Shift from '@/models/Shift';
-import type { WorkInfo } from '@/types';
+import { STATUS, type WorkInfo } from '@/types';
 
 export default {
+  emits: ['login'],
+
   computed: {
     ...mapStores(useAuthStore, useShiftsStore, useShiftTemplatesStore, useWorkInfosStore, useShiftSessionStore)
   },
@@ -46,7 +50,7 @@ export default {
 
         console.log('Validating data...');
 
-        const shifts = new Promise<Shift[]>((resolve, reject) => {
+        const shifts = new Promise<Shift[]>(async (resolve, reject) => {
           try {
             const parsedShifts = Shift.parseAll(JSON.parse(data.shifts || data.entries));
             console.log('Shifts:', parsedShifts);
@@ -63,7 +67,7 @@ export default {
           }
         });
 
-        const templates = new Promise<Map<string, Shift>>((resolve, reject) => {
+        const templates = new Promise<Map<string, Shift>>(async (resolve, reject) => {
           try {
             const parsedTemplates: Map<string, Shift> = Object.entries(JSON.parse(data.shiftTemplates || data.templates)).reduce((acc: any, [name, template]: [string, any]) => {
               try {
@@ -177,9 +181,9 @@ export default {
             this.shiftTemplatesStore.add(name, template);
           });
 
-          workInfos.forEach((info: WorkInfo, workplace: string) => {
+          workInfos.forEach((info: WorkInfo, id: string) => {
             info.payRates.forEach((rate: number) => {
-              this.workInfosStore.add(workplace, rate);
+              this.workInfosStore.add(id, rate);
             });
           });
 
@@ -192,7 +196,7 @@ export default {
           })
           .catch((error) => {
             console.error('Error during data import:', error);
-            alert(`Error during data import`);
+            alert(`Error during data import: ${error.message}`);
           });
       };
 
@@ -200,10 +204,9 @@ export default {
     },
 
     async handleLogin() {
-      await this.authStore.login();
-      this.shiftsStore.fetch();
-      this.workInfosStore.fetch();
-      this.shiftTemplatesStore.fetch();
+      // Emit event first, let parent handle the full flow
+      // This ensures the dialog can be shown even after menu closes
+      this.$emit('login');
     }
   }
 };

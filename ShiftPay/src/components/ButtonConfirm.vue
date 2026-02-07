@@ -51,8 +51,6 @@ export default {
       const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
       this.distanceMoved = clamp(event.clientX - this.cursorStartX, 0, maxDistance);
 
-      console.log(this.distanceMoved, maxDistance, Date.now() - this.startHoldingTime);
-
       if (this.distanceMoved == maxDistance && Date.now() - this.startHoldingTime > 300) {
         this.confirmed = true;
       } else {
