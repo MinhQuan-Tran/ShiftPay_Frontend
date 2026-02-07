@@ -228,7 +228,7 @@ export default {
     <select v-model="selectedSubCategoryOption" class="category">
       <optgroup v-for="(subCategory, category) in STAT_OPTIONS" :key="category" :label="category">
         <option v-for="(subcat, subcatKey) in subCategory" :key="subcatKey" :value="subcatKey">
-          {{ subcat.label }}
+          {{ (subcat as any).label }}
         </option>
       </optgroup>
     </select>
