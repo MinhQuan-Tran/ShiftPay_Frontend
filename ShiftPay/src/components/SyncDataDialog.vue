@@ -58,9 +58,6 @@ export default {
       this.error = null;
 
       try {
-        // Clear the pending flag before uploading
-        localStorage.removeItem('syncPending');
-
         this.shiftsStore.status = STATUS.Loading;
         this.workInfosStore.status = STATUS.Loading;
         this.shiftTemplatesStore.status = STATUS.Loading;
@@ -89,6 +86,8 @@ export default {
           );
         });
         await Promise.all(templatePromises);
+
+        localStorage.removeItem('syncPending');
 
         this.$emit('complete');
         this.closeDialog();

@@ -16,7 +16,11 @@ export default {
   emits: ['login'],
 
   computed: {
-    ...mapStores(useAuthStore, useShiftsStore, useShiftTemplatesStore, useWorkInfosStore, useShiftSessionStore)
+    ...mapStores(useAuthStore, useShiftsStore, useShiftTemplatesStore, useWorkInfosStore, useShiftSessionStore),
+
+    isSyncPending(): boolean {
+      return localStorage.getItem('syncPending') === 'true';
+    }
   },
 
   methods: {
@@ -217,7 +221,10 @@ export default {
     <input type="file" id="fileInput" accept=".json" @change="uploadData" />
     <button id="downloadButton" @click="downloadData">Download Data</button>
     <button v-if="!authStore.isAuthenticated" @click="handleLogin">Login</button>
-    <button v-else @click="authStore.logout">Logout</button>
+    <button v-else @click="authStore.logout" :disabled="isSyncPending"
+      :title="isSyncPending ? 'Sync your data first' : ''">
+      Logout
+    </button>
   </div>
 </template>
 

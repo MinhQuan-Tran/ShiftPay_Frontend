@@ -18,6 +18,23 @@ interface RequestOptions {
   queryParams?: QueryParams;
 }
 
+// Track pending write operations (POST, PUT, DELETE)
+let pendingWriteCount = 0;
+
+/** Returns true if there are pending write operations */
+export function hasPendingWrites(): boolean {
+  return pendingWriteCount > 0;
+}
+
+/** Initialize beforeunload warning for pending API writes */
+export function initBeforeUnloadWarning(): void {
+  window.addEventListener('beforeunload', (e) => {
+    if (hasPendingWrites()) {
+      e.preventDefault();
+    }
+  });
+}
+
 function buildUrl(resource: ApiResource, queryParams?: QueryParams): string {
   const baseUrl = `${import.meta.env.VITE_API_URL}/api/${resource}`;
   if (!queryParams) return baseUrl;
@@ -44,6 +61,10 @@ async function createRequest(resource: ApiResource, options: RequestOptions) {
     Authorization: `Bearer ${token}`
   };
 
+  // Track write operations
+  const isWriteOperation = options.method !== 'GET';
+  if (isWriteOperation) pendingWriteCount++;
+
   try {
     const res = await fetch(url, {
       method: options.method,
@@ -65,6 +86,8 @@ async function createRequest(resource: ApiResource, options: RequestOptions) {
       throw new Error('Network error: Please check your internet connection');
     }
     throw err instanceof Error ? err : new Error('API request failed: ' + String(err));
+  } finally {
+    if (isWriteOperation) pendingWriteCount--;
   }
 }
 
