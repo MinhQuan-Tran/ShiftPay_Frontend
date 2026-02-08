@@ -147,6 +147,10 @@ export default {
       this.updateTitleByMonth();
     },
 
+    getLabel(subcat: { label: string; }) {
+      return subcat.label;
+    },
+
     formatStat(stats: Stats) {
       const category = this.selectedStatCategory;
       const sub = this.selectedSubCategoryOption;
@@ -241,7 +245,7 @@ export default {
     <select v-model="selectedSubCategoryOption" class="category">
       <optgroup v-for="(subCategory, category) in STAT_OPTIONS" :key="category" :label="category">
         <option v-for="(subcat, subcatKey) in subCategory" :key="subcatKey" :value="subcatKey">
-          {{ (subcat as { label: string; }).label }}
+          {{ getLabel(subcat) }}
         </option>
       </optgroup>
     </select>
