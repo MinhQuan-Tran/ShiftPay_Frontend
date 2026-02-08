@@ -42,7 +42,9 @@ export default {
     <div class="dialog">
       <div class="header">
         <b class="title">{{ title }}</b>
-        <button class="close-btn" @click="closeDialog"><div class="icons8-close"></div></button>
+        <button class="close-btn" @click="closeDialog">
+          <div class="icons8-close"></div>
+        </button>
       </div>
       <div class="divider"></div>
       <div class="content">
@@ -73,6 +75,7 @@ dialog::backdrop {
   from {
     backdrop-filter: blur(0);
   }
+
   to {
     backdrop-filter: blur(5px);
   }
