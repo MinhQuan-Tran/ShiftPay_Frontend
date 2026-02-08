@@ -98,7 +98,7 @@ export default {
       return calendar;
     },
 
-    weeks() {
+    weekStats() {
       if (!Array.isArray(this.calendar) || this.calendar.length === 0) return [];
       const weeks: Array<{ start: Date; end: Date; stats: Stats; }> = [];
 
@@ -114,6 +114,19 @@ export default {
         weeks.push({ start, end, stats });
       }
       return weeks;
+    },
+
+    monthStats(): Stats {
+      const date = new Date(this.today);
+      date.setMonth(date.getMonth() + this.monthChange);
+
+      const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
+      const lastDayOfMonth = new Date(firstDayOfMonth.getFullYear(), firstDayOfMonth.getMonth() + 1, 0, 0, 0, 0, 0);
+
+      const monthEnd = new Date(lastDayOfMonth);
+      monthEnd.setDate(monthEnd.getDate() + 1); // Exclusive end: first day of next month at 12am
+
+      return this.shiftsStore.stats(firstDayOfMonth, monthEnd);
     },
   },
 
@@ -233,10 +246,33 @@ export default {
       </optgroup>
     </select>
 
-    <div class="stats">
-      <span class="stat" v-for="(week, i) in weeks" :key="i">
+    <div class="weekly stats">
+      <span class="stat" v-for="(week, i) in weekStats" :key="i">
         {{ formatStat(week.stats) }}
       </span>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="legend-icon today-icon"></span>
+        <span>Today</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-icon has-shift-icon"></span>
+        <span>Has shift</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-icon selected-icon"></span>
+        <span>Selected</span>
+      </div>
+
+      <div class="legend-item monthly-label">
+        <span>Monthly (1 - {{ new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }}) =</span>
+      </div>
+    </div>
+
+    <div class="monthly stats">
+      <span class="stat">{{ formatStat(monthStats) }}</span>
     </div>
 
     <LoadingOverlay :active="shiftsStore.status === STATUS.Loading" />
@@ -248,12 +284,14 @@ export default {
   position: relative;
   display: grid;
   grid-template-columns: 7fr minmax(min-content, 1fr);
-  grid-template-rows: repeat(2, 2.5rem) 1fr;
+  grid-template-rows: repeat(2, 2.5rem) 1fr auto;
   column-gap: var(--padding-small);
+  row-gap: 2px;
   grid-template-areas:
     'month-nav month-nav'
     'weekdays category'
-    'calendar stats';
+    'calendar weekly'
+    'legend monthly';
 }
 
 .month-nav {
@@ -371,7 +409,6 @@ export default {
   color: var(--text-color-black);
   outline: none;
   border: none;
-  border-bottom: 2px solid var(--background-color);
   text-transform: capitalize;
 }
 
@@ -393,14 +430,75 @@ export default {
   padding: 0 var(--padding-small);
   background-color: var(--primary-color);
   color: var(--text-color-black);
+}
+
+.weekly {
+  grid-area: weekly;
+}
+
+.monthly {
+  grid-area: monthly;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  background-color: var(--primary-color);
+  color: var(--text-color-black);
+  padding: var(--padding-small);
   border-bottom-left-radius: var(--border-radius);
   border-bottom-right-radius: var(--border-radius);
+  min-width: 8ch;
+}
+
+.monthly-label {
+  margin-left: auto;
 }
 
 .stat {
   display: flex;
   flex-direction: row;
   align-items: center;
+  white-space: nowrap;
+}
+
+.legend {
+  grid-area: legend;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: var(--padding-small) 0;
+  font-size: smaller;
+  color: var(--text-color-faded);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legend-icon {
+  display: inline-grid;
+  place-content: center;
+  height: 1.6em;
+  width: 1.6em;
+  border-radius: 50%;
+  font-size: 0.75em;
+  line-height: 1;
+}
+
+.today-icon {
+  background-color: var(--primary-color);
+}
+
+.has-shift-icon {
+  background-color: light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.1));
+}
+
+.selected-icon {
+  border-radius: 0;
+  border: 1.5px solid light-dark(black, lightgrey);
 }
 
 .summary {
