@@ -128,6 +128,14 @@ export default {
 
       return this.shiftsStore.stats(firstDayOfMonth, monthEnd);
     },
+
+    monthLastDay(): string {
+      const date = new Date(this.today);
+      date.setMonth(date.getMonth() + this.monthChange);
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      const suffix = lastDay === 31 ? 'st' : 'th';
+      return `${lastDay}${suffix}`;
+    },
   },
 
   methods: {
@@ -250,7 +258,7 @@ export default {
       </optgroup>
     </select>
 
-    <div class="weekly stats">
+    <div class="weekly stats" title="Weekly Stats">
       <span class="stat" v-for="(week, i) in weekStats" :key="i">
         {{ formatStat(week.stats) }}
       </span>
@@ -269,13 +277,10 @@ export default {
         <span class="legend-icon selected-icon"></span>
         <span>Selected</span>
       </div>
-
-      <div class="legend-item monthly-label">
-        <span>Monthly (1 - {{ new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }}) =</span>
-      </div>
     </div>
 
-    <div class="monthly stats">
+    <div class="monthly stats" title="Monthly Stats">
+      <span class="month-range-label">1st - {{ monthLastDay }}</span>
       <span class="stat">{{ formatStat(monthStats) }}</span>
     </div>
 
@@ -454,8 +459,9 @@ export default {
   min-width: 8ch;
 }
 
-.monthly-label {
-  margin-left: auto;
+.month-range-label {
+  font-size: 0.75em;
+  opacity: 0.6;
 }
 
 .stat {
