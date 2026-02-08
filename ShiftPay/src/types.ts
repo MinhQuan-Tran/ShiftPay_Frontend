@@ -32,3 +32,9 @@ export type Day = {
 
 export const STATUS = { Ready: 'Ready', Loading: 'Loading', Error: 'Error' } as const;
 export type Status = (typeof STATUS)[keyof typeof STATUS];
+
+export interface ChangelogEntry {
+  version: string;
+  date: string;
+  changes: string[];
+}

@@ -1,7 +1,4 @@
 <script lang="ts">
-import packageJson from '@/../package.json';
-import changelog from '@/../changelog.json';
-
 import api, { initBeforeUnloadWarning } from '@/api';
 import Shift from '@/models/Shift';
 
@@ -15,48 +12,19 @@ import { useShiftSessionStore } from '@/stores/shiftSessionStore';
 import MainMenu from '@/components/MainMenu.vue';
 import WeekSchedule from '@/components/WeekSchedule.vue';
 import DaySchedule from '@/components/DaySchedule.vue';
-import BaseDialog from '@/components/BaseDialog.vue';
 import SyncDataDialog from '@/components/SyncDataDialog.vue';
 import ImportDataDialog from '@/components/ImportDataDialog.vue';
+import ChangelogDialog from '@/components/ChangelogDialog.vue';
 
 export default {
   data() {
     return {
       selectedDate: new Date(new Date().setHours(0, 0, 0, 0)),
-      openChangelogDialog: Function,
       menuOpened: false
     };
   },
 
   methods: {
-    versionChanges(): {
-      version: string;
-      date: string;
-      changes: string[];
-    }[] {
-      const currentVersion = localStorage.getItem('appVersion')?.split('.').map(Number) || [0, 0, 0];
-
-      return changelog
-        .filter((log: { version: string; date: string; changes: string[]; }) => {
-          const logVersion = log.version.split('.').map(Number);
-
-          // Compare version numbers
-          for (let i = 0; i < logVersion.length; i++) {
-            if (logVersion[i] > currentVersion[i]) {
-              return true;
-            } else if (logVersion[i] < currentVersion[i]) {
-              return false;
-            }
-          }
-
-          return false;
-        })
-        .reverse();
-    },
-    handleCloseChangelogDiaglog() {
-      console.log('here');
-      localStorage.setItem('appVersion', packageJson.version);
-    },
     showSyncDialog() {
       console.log('Showing sync dialog');
       (this.$refs['sync-dialog'] as any).showModal();
@@ -105,9 +73,9 @@ export default {
     MainMenu,
     WeekSchedule,
     DaySchedule,
-    BaseDialog,
     SyncDataDialog,
-    ImportDataDialog
+    ImportDataDialog,
+    ChangelogDialog
   },
 
   async mounted() {
@@ -124,10 +92,7 @@ export default {
     this.shiftSessionStore.fetch();
 
     // Show changelog if app version is different
-    const currentVersion = localStorage.getItem('appVersion');
-    if (currentVersion !== packageJson.version) {
-      (this.$refs['changelog-dialog'] as any).showModal();
-    }
+    (this.$refs['changelog-dialog'] as any).checkAndShow();
 
     // Show sync dialog if user previously clicked "Decide Later"
     if (this.authStore.isAuthenticated && localStorage.getItem('syncPending') === 'true') {
@@ -163,20 +128,7 @@ export default {
   <hr />
   <DaySchedule :selected-date="selectedDate" />
 
-  <BaseDialog ref="changelog-dialog" title="What's new" @close-dialog="handleCloseChangelogDiaglog">
-    <div class="what-new">
-      <div v-for="log in versionChanges()" :key="log.version">
-        <div class="info">
-          <h2 class="version">{{ log.version }}</h2>
-          <span class="date">{{ new Date(log.date).toLocaleDateString() }}</span>
-        </div>
-        <hr />
-        <ul class="changes">
-          <li v-for="(change, index) in log.changes" :key="index">{{ change }}</li>
-        </ul>
-      </div>
-    </div>
-  </BaseDialog>
+  <ChangelogDialog ref="changelog-dialog" />
 </template>
 
 <style scoped>
@@ -224,21 +176,5 @@ export default {
 
 hr {
   margin: var(--padding);
-}
-
-.what-new {
-  overflow-y: auto;
-}
-
-.what-new .info {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  margin: 0 var(--padding);
-}
-
-.what-new .version {
-  margin: 0;
 }
 </style>

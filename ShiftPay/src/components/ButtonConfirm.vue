@@ -21,8 +21,6 @@ export default {
       this.pointerId = event.pointerId;
       this.cursorStartX = event.clientX;
 
-      const button = this.$refs.button as HTMLButtonElement;
-      const slider = this.$refs.slider as HTMLDivElement;
       const placeholder = this.$refs.placeholder as HTMLSpanElement;
 
       placeholder.style.transition = 'opacity 0.3s ease 0.2s';
@@ -60,7 +58,6 @@ export default {
 
     pointerup() {
       const button = this.$refs.button as HTMLButtonElement;
-      const slider = this.$refs.slider as HTMLDivElement;
       const placeholder = this.$refs.placeholder as HTMLSpanElement;
 
       button.click();
@@ -96,8 +93,8 @@ export default {
   <div ref="slider"
     :class="['slider', { focus: isHolding || (typeof $attrs.class === 'string' && $attrs.class.includes('focus')) }]">
     <span ref="placeholder" class="placeholder">Slide to confirm</span>
-    <button ref="button" :class="['button-confirm', { active: isHolding }]" v-bind="$attrs" @pointerdown="pointerdown"
-      @click="handleClick" @touchstart.prevent @dragstart.prevent>
+    <button ref="button" class="button-confirm" v-bind="$attrs" @pointerdown="pointerdown" @click="handleClick"
+      @touchstart.prevent @dragstart.prevent>
       <slot></slot>
     </button>
   </div>
@@ -132,6 +129,7 @@ export default {
 }
 
 button {
+  outline: none;
   user-select: none;
   transition: all 0.2s ease;
   height: 100%;
@@ -139,15 +137,11 @@ button {
   transform: translateX(v-bind(distanceMoved + 'px'));
 }
 
-button:focus {
-  outline: none;
-}
-
 button.focus {
   width: 100%;
 }
 
-button.active {
+.slider.focus button {
   transition: none;
 }
 </style>
