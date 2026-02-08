@@ -48,9 +48,12 @@ Every store follows the same structure — study `shiftsStore.ts` as the canonic
 
 Components use **Options API** (not `<script setup>`). `App.vue` uses `mapStores()` from Pinia. Dialog components expose `showModal()` called via `$refs`.
 
+This project follows **mobile-first design**. Write CSS with base styles targeting small screens, then use `min-width` media queries to layer on tablet/desktop adjustments. Touch targets, readability, and vertical layouts should be the default.
+
 ### Icons
 
 Avoid inline SVG for icons. Prefer in order:
+
 1. **Native text** — Unicode symbols/emoji (e.g. `✕`, `⚙`, `▶`) when a suitable character exists
 2. **Icons8** — use `<img>` tags referencing Icons8 URLs (e.g. `https://img.icons8.com/...`)
 3. **SVG** — only as a last resort when neither option above works
