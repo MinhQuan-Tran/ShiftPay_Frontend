@@ -1,6 +1,7 @@
 <script lang="ts">
 import api, { initBeforeUnloadWarning } from '@/api';
 import Shift from '@/models/Shift';
+import { STATUS } from './types';
 
 import { mapStores } from 'pinia';
 import { useAuthStore } from './stores/authStore';
@@ -45,6 +46,11 @@ export default {
       this.menuOpened = false;
 
       await this.authStore.login();
+
+      // Set stores to loading state while we check for data and potentially sync
+      this.shiftsStore.status = STATUS.Loading;
+      this.workInfosStore.status = STATUS.Loading;
+      this.shiftTemplatesStore.status = STATUS.Loading;
 
       // Check if there's any data online
       const shifts = await api.shifts.fetch();
