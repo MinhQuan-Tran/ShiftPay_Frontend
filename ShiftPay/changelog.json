@@ -145,5 +145,14 @@
       "[Fix] Incorrect duration assignment in week calculations",
       "Enhance week stats UI and schedule layout"
     ]
+  },
+  {
+    "version": "0.3.11",
+    "date": "2026-02-09T00:00:00+1100",
+    "changes": [
+      "Improve shift item layout with wrapping support",
+      "Display full workplace names without truncation",
+      "Enhance shift income alignment for better readability"
+    ]
   }
 ]
