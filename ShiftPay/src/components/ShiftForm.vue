@@ -116,129 +116,132 @@ export default {
       const action = ((event as SubmitEvent)?.submitter as HTMLButtonElement).value;
       this.currentAction = action;
 
-      // Match action with form data
-      switch (action) {
-        case 'add':
-        case 'check in': {
-          const shift = this.parseFormData();
+      try {
+        // Match action with form data
+        switch (action) {
+          case 'add':
+          case 'check in': {
+            const shift = this.parseFormData();
 
-          console.log('Adding shift:', shift);
+            console.log('Adding shift:', shift);
 
-          const newShifts: Shift[] = [];
-          newShifts.push(shift);
+            const newShifts: Shift[] = [];
+            newShifts.push(shift);
 
-          // Handle recurring shifts
-          if (this.recurringShift) {
-            const recurringDay = Number((this.$refs['recurring-day'] as HTMLInputElement)?.value);
-            const recurringMonth = Number((this.$refs['recurring-month'] as HTMLInputElement)?.value);
-            const recurringYear = Number((this.$refs['recurring-year'] as HTMLInputElement)?.value);
+            // Handle recurring shifts
+            if (this.recurringShift) {
+              const recurringDay = Number((this.$refs['recurring-day'] as HTMLInputElement)?.value);
+              const recurringMonth = Number((this.$refs['recurring-month'] as HTMLInputElement)?.value);
+              const recurringYear = Number((this.$refs['recurring-year'] as HTMLInputElement)?.value);
 
-            const recurringEndDate = new Date(
-              (this.$refs['recurring-end-date'] as HTMLInputElement)?.value ?? shift!.startTime
-            );
-            recurringEndDate.setHours(23, 59, 59, 999);
+              const recurringEndDate = new Date(
+                (this.$refs['recurring-end-date'] as HTMLInputElement)?.value ?? shift!.startTime
+              );
+              recurringEndDate.setHours(23, 59, 59, 999);
 
-            const duration = shift!.endTime.getTime() - shift!.startTime.getTime();
+              const duration = shift!.endTime.getTime() - shift!.startTime.getTime();
 
-            for (
-              const currentFromDate = new Date(shift!.startTime);
-              currentFromDate < recurringEndDate;
-              // Skip the first shift as it's already added
-            ) {
-              // Increment the currentFromDate by the recurring interval
-              currentFromDate.setDate(currentFromDate.getDate() + recurringDay);
-              currentFromDate.setMonth(currentFromDate.getMonth() + recurringMonth);
-              currentFromDate.setFullYear(currentFromDate.getFullYear() + recurringYear);
+              for (
+                const currentFromDate = new Date(shift!.startTime);
+                currentFromDate < recurringEndDate;
+                // Skip the first shift as it's already added
+              ) {
+                // Increment the currentFromDate by the recurring interval
+                currentFromDate.setDate(currentFromDate.getDate() + recurringDay);
+                currentFromDate.setMonth(currentFromDate.getMonth() + recurringMonth);
+                currentFromDate.setFullYear(currentFromDate.getFullYear() + recurringYear);
 
-              const start = new Date(currentFromDate);
-              const end = new Date(currentFromDate.getTime() + duration);
+                const start = new Date(currentFromDate);
+                const end = new Date(currentFromDate.getTime() + duration);
 
-              const recurringShift = new Shift({
-                workplace: shift!.workplace,
-                payRate: shift!.payRate,
-                startTime: start,
-                endTime: end,
-                unpaidBreaks: shift!.unpaidBreaks
-              });
+                const recurringShift = new Shift({
+                  workplace: shift!.workplace,
+                  payRate: shift!.payRate,
+                  startTime: start,
+                  endTime: end,
+                  unpaidBreaks: shift!.unpaidBreaks
+                });
 
-              newShifts.push(recurringShift);
+                newShifts.push(recurringShift);
+              }
             }
-          }
 
-          // Batch the reactive update (one change, multiple shifts) -> better performance
-          await this.shiftsStore.add(newShifts).catch((error) => {
-            alert('Failed to add shift(s): ' + error);
-            throw error;
-          });
+            // Batch the reactive update (one change, multiple shifts) -> better performance
+            await this.shiftsStore.add(newShifts).catch((error) => {
+              alert('Failed to add shift(s): ' + error);
+              throw error;
+            });
 
-          // Add workplace and pay rate to workInfos (same info for multiple shifts)
-          this.workInfosStore.add(shift.workplace, shift.payRate).catch((error) => {
-            alert('Failed to add work info: ' + error);
-            // Continue even if it fails
-          });
-
-          // Add shift template if needed
-          if (this.saveShiftTemplate) {
-            this.shiftTemplatesStore.add(this.templateName, shift).catch((error) => {
-              alert('Failed to add shift template: ' + error);
+            // Add workplace and pay rate to workInfos (same info for multiple shifts)
+            this.workInfosStore.add(shift.workplace, shift.payRate).catch((error) => {
+              alert('Failed to add work info: ' + error);
               // Continue even if it fails
             });
+
+            // Add shift template if needed
+            if (this.saveShiftTemplate) {
+              this.shiftTemplatesStore.add(this.templateName, shift).catch((error) => {
+                alert('Failed to add shift template: ' + error);
+                // Continue even if it fails
+              });
+            }
+
+            // Remove check in time
+            if (action === 'check in') {
+              this.shiftSessionStore.clear();
+            }
+
+            break;
           }
 
-          // Remove check in time
-          if (action === 'check in') {
+          case 'edit': {
+            const shift = this.parseFormData();
+            if (!shift.id) {
+              alert('Invalid shift');
+              throw new Error('Invalid shift');
+            }
+            await this.shiftsStore.update(shift.id, shift).catch((error) => {
+              alert('Failed to edit shift: ' + error);
+              throw error;
+            });
+
+            break;
+          }
+
+          case 'delete':
+            if (!this.formData || !this.formData.id) {
+              alert('Invalid shift');
+              throw new Error('Invalid shift');
+            }
+
+            await this.shiftsStore.delete(this.formData.id).catch((error) => {
+              alert('Failed to delete shift: ' + error);
+              throw error;
+            });
+            break;
+
+          case 'edit template': {
+            const shift = this.parseFormData();
+            await this.shiftTemplatesStore.add(this.templateName, shift).catch((error) => {
+              alert('Failed to update shift template: ' + error);
+              throw error;
+            });
+            break;
+          }
+
+          case 'remove check in':
             this.shiftSessionStore.clear();
-          }
+            break;
 
-          break;
+          default:
+            alert('Invalid action');
+            throw new Error('Invalid action');
         }
 
-        case 'edit': {
-          const shift = this.parseFormData();
-          if (!shift.id) {
-            alert('Invalid shift');
-            throw new Error('Invalid shift');
-          }
-          await this.shiftsStore.update(shift.id, shift).catch((error) => {
-            alert('Failed to edit shift: ' + error);
-            throw error;
-          });
-
-          break;
-        }
-
-        case 'delete':
-          if (!this.formData || !this.formData.id) {
-            alert('Invalid shift');
-            throw new Error('Invalid shift');
-          }
-
-          await this.shiftsStore.delete(this.formData.id).catch((error) => {
-            alert('Failed to delete shift: ' + error);
-            throw error;
-          });
-          break;
-
-        case 'edit template': {
-          const shift = this.parseFormData();
-          await this.shiftTemplatesStore.add(this.templateName, shift).catch((error) => {
-            alert('Failed to update shift template: ' + error);
-            throw error;
-          });
-          break;
-        }
-
-        case 'remove check in':
-          this.shiftSessionStore.clear();
-          break;
-
-        default:
-          alert('Invalid action');
-          throw new Error('Invalid action');
+        form.reset();
+      } finally {
+        this.currentAction = '';
       }
-
-      this.currentAction = '';
-      form.reset();
 
       const dialog = form.closest('dialog') as HTMLDialogElement;
       dialog?.close();
@@ -717,7 +720,7 @@ form {
   padding: 0;
 }
 
-.action .focus {
+.actions .focus {
   flex-grow: 1 !important;
 }
 

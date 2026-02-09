@@ -16,6 +16,17 @@ export const useShiftTemplatesStore = defineStore('shiftTemplates', {
       await withStatus(this, async () => {
         let parsedData = JSON.parse(localStorage.getItem('shiftTemplates') || '[]');
 
+        // Migration: older versions stored templates as an object/map keyed by name.
+        // Convert to the array format expected by the rest of the code.
+        if (parsedData && typeof parsedData === 'object' && !Array.isArray(parsedData)) {
+          parsedData = Object.entries(parsedData).map(([name, value]: [string, any]) => ({
+            templateName: name,
+            ...(typeof value === 'object' && value !== null ? value : {})
+          }));
+          // Persist migrated format so this conversion only runs once
+          localStorage.setItem('shiftTemplates', JSON.stringify(parsedData));
+        }
+
         const authStore = useAuthStore();
         const syncPending = localStorage.getItem('syncPending') === 'true';
 

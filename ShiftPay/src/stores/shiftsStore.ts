@@ -202,10 +202,15 @@ export const useShiftsStore = defineStore('shifts', {
 
         const updated = await api.shifts.update(id, shiftToUpdate);
 
-        const index = this.shifts.findIndex((shift) => shift.id === updated.id);
+        const parsed = Shift.parse(updated);
+        const index = this.shifts.findIndex((shift) => shift.id === parsed.id);
 
-        // No need to check for -1; if not found, js will add it
-        this.shifts[index] = Shift.parse(updated);
+        if (index === -1) {
+          // Shift wasn't found locally — append it so the UI stays in sync
+          this.shifts.push(parsed);
+        } else {
+          this.shifts[index] = parsed;
+        }
       });
     },
 

@@ -156,25 +156,37 @@ export default {
         result.shiftErrors.push('Failed to parse shifts: ' + (err.message || String(err)));
       }
 
-      // Parse templates
+      // Parse templates (supports both array and object-map formats)
       try {
         const templatesRaw = JSON.parse(data.shiftTemplates || data.templates || '{}');
-        for (const [name, template] of Object.entries(templatesRaw) as [string, any][]) {
+        const templateEntries: [string, any][] = Array.isArray(templatesRaw)
+          ? templatesRaw.map((item: any) => [item.templateName || '', item])
+          : Object.entries(templatesRaw);
+        for (const [name, template] of templateEntries) {
           try {
+            if (!name || typeof name !== 'string') {
+              throw new Error('Missing or invalid template name');
+            }
             result.templates.set(name, Shift.parse(template.shift || template.entry || template));
           } catch (err: any) {
-            result.templateErrors.push(`Template "${name}": ${err.message || String(err)}`);
+            result.templateErrors.push(`Template "${name || '(unnamed)'}": ${err.message || String(err)}`);
           }
         }
       } catch (err: any) {
         result.templateErrors.push('Failed to parse templates: ' + (err.message || String(err)));
       }
 
-      // Parse work infos
+      // Parse work infos (supports both array and object-map formats)
       try {
         const workInfosRaw = JSON.parse(data.workInfos || data.prevWorkInfos || '{}');
-        for (const [workplace, info] of Object.entries(workInfosRaw) as [string, any][]) {
+        const entries: [string, any][] = Array.isArray(workInfosRaw)
+          ? workInfosRaw.map((item: any) => [item.workplace, item])
+          : Object.entries(workInfosRaw);
+        for (const [workplace, info] of entries) {
           try {
+            if (!workplace || typeof workplace !== 'string') {
+              throw new Error('Missing or invalid workplace name');
+            }
             if (typeof info !== 'object' || info === null) {
               throw new Error('Invalid data format');
             }
