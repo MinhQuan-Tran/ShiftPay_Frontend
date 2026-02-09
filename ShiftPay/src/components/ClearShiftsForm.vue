@@ -339,8 +339,9 @@ export default {
 
 .shift-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem 0.5rem;
   padding: 0.4rem 0.5rem;
   border-radius: var(--border-radius);
   background-color: var(--background-color);
@@ -371,10 +372,6 @@ export default {
 
 .shift-workplace {
   font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 7rem;
 }
 
 .shift-time {
@@ -384,6 +381,7 @@ export default {
 }
 
 .shift-income {
+  margin-left: auto;
   white-space: nowrap;
   font-weight: bold;
 }
