@@ -27,9 +27,8 @@ export default {
       today,
       monthChange: 0,
       spaceBetweenDay: '0px',
-      selectedStatOption: 'income' as keyof typeof STAT_OPTIONS,
       // type as the union of all subcategory keys across STAT_OPTIONS
-      selectedSubcategoryOption: 'beforeTax' as keyof (typeof STAT_OPTIONS)[keyof typeof STAT_OPTIONS],
+      selectedSubCategoryOption: 'beforeTax' as { [K in keyof typeof STAT_OPTIONS]: keyof (typeof STAT_OPTIONS)[K] }[keyof typeof STAT_OPTIONS],
       STAT_OPTIONS
     };
   },
@@ -39,12 +38,23 @@ export default {
   computed: {
     ...mapStores(useShiftsStore),
 
-    statSubcategoryOptions() {
-      return this.STAT_OPTIONS[this.selectedStatOption];
+    selectedStatCategory(): keyof typeof STAT_OPTIONS {
+      const selected = this.selectedSubCategoryOption;
+      const categories = Object.keys(this.STAT_OPTIONS) as Array<keyof typeof STAT_OPTIONS>;
+
+      for (const category of categories) {
+        if (selected in this.STAT_OPTIONS[category]) {
+          return category;
+        }
+      }
+
+      // Fallback (shouldn't happen unless STAT_OPTIONS changes)
+      return categories[0] ?? 'income';
     },
 
     calendar() {
       const changedDate = new Date(this.today);
+      changedDate.setDate(1);
       changedDate.setMonth(changedDate.getMonth() + this.monthChange);
 
       const firstDayOfMonth = new Date(changedDate.getFullYear(), changedDate.getMonth(), 1, 0, 0, 0, 0);
@@ -89,7 +99,7 @@ export default {
       return calendar;
     },
 
-    weeks() {
+    weekStats() {
       if (!Array.isArray(this.calendar) || this.calendar.length === 0) return [];
       const weeks: Array<{ start: Date; end: Date; stats: Stats; }> = [];
 
@@ -106,11 +116,35 @@ export default {
       }
       return weeks;
     },
+
+    monthStats(): Stats {
+      const date = new Date(this.today);
+      date.setDate(1);
+      date.setMonth(date.getMonth() + this.monthChange);
+
+      const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
+      const lastDayOfMonth = new Date(firstDayOfMonth.getFullYear(), firstDayOfMonth.getMonth() + 1, 0, 0, 0, 0, 0);
+
+      const monthEnd = new Date(lastDayOfMonth);
+      monthEnd.setDate(monthEnd.getDate() + 1); // Exclusive end: first day of next month at 12am
+
+      return this.shiftsStore.stats(firstDayOfMonth, monthEnd);
+    },
+
+    monthLastDay(): string {
+      const date = new Date(this.today);
+      date.setDate(1);
+      date.setMonth(date.getMonth() + this.monthChange);
+      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      const suffix = lastDay === 31 ? 'st' : 'th';
+      return `${lastDay}${suffix}`;
+    },
   },
 
   methods: {
     updateTitleByMonth() {
       const date = new Date(this.today);
+      date.setDate(1);
       date.setMonth(date.getMonth() + this.monthChange);
       this.title = date.toLocaleString('default', { month: 'long', year: 'numeric' });
     },
@@ -125,31 +159,34 @@ export default {
       this.updateTitleByMonth();
     },
 
+    getLabel(subcat: { label: string; }) {
+      return subcat.label;
+    },
+
     formatStat(stats: Stats) {
-      const category = this.selectedStatOption;
-      const sub = this.selectedSubcategoryOption;
+      const category = this.selectedStatCategory;
+      const sub = this.selectedSubCategoryOption;
 
       switch (category) {
-        case 'income':
+        case 'income': {
+          if (sub in stats.income) {
+            return currencyFormat(stats.income[sub as keyof Stats['income']]);
+          }
+
           return currencyFormat(stats.income.beforeTax);
+        }
 
         case 'hours': {
-          const duration = stats.hours[sub] as any;
-          if (duration && typeof duration.format === 'function') {
+          if (sub in stats.hours) {
+            const duration = stats.hours[sub as keyof Stats['hours']];
             return duration.format();
           }
-          return String(duration);
+          return '';
         }
 
         default:
           return '';
       }
-    }
-  },
-
-  watch: {
-    selectedStatOption(newVal: keyof typeof STAT_OPTIONS) {
-      this.selectedSubcategoryOption = Object.keys(this.STAT_OPTIONS[newVal])[0] as keyof (typeof STAT_OPTIONS)[keyof typeof STAT_OPTIONS];
     }
   },
 
@@ -217,20 +254,38 @@ export default {
       </div>
     </div>
 
-    <select v-model="selectedStatOption" class="category">
-      <option v-for="(_, category) in STAT_OPTIONS" :key="category" :value="category">{{ category }}</option>
+    <select v-model="selectedSubCategoryOption" class="category">
+      <optgroup v-for="(subCategory, category) in STAT_OPTIONS" :key="category" :label="category">
+        <option v-for="(subcat, subcatKey) in subCategory" :key="subcatKey" :value="subcatKey">
+          {{ getLabel(subcat) }}
+        </option>
+      </optgroup>
     </select>
 
-    <select v-model="selectedSubcategoryOption" class="subcategory">
-      <option v-for="(subcat, index) in statSubcategoryOptions" :key="index" :value="index">
-        {{ (subcat as any).label }}
-      </option>
-    </select>
-
-    <div class="stats">
-      <span class="stat" v-for="(week, i) in weeks" :key="i">
+    <div class="weekly stats" title="Weekly Stats">
+      <span class="stat" v-for="(week, i) in weekStats" :key="i">
         {{ formatStat(week.stats) }}
       </span>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="legend-icon today-icon"></span>
+        <span>Today</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-icon has-shift-icon"></span>
+        <span>Has shift</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-icon selected-icon"></span>
+        <span>Selected</span>
+      </div>
+    </div>
+
+    <div class="monthly stats" title="Monthly Stats">
+      <span class="month-range-label">1st - {{ monthLastDay }}</span>
+      <span class="stat">{{ formatStat(monthStats) }}</span>
     </div>
 
     <LoadingOverlay :active="shiftsStore.status === STATUS.Loading" />
@@ -242,12 +297,14 @@ export default {
   position: relative;
   display: grid;
   grid-template-columns: 7fr minmax(min-content, 1fr);
-  grid-template-rows: repeat(2, 2.5rem) 1fr;
+  grid-template-rows: repeat(2, 2.5rem) 1fr auto;
   column-gap: var(--padding-small);
+  row-gap: 2px;
   grid-template-areas:
-    'month-nav category'
-    'weekdays subcategory'
-    'calendar stats';
+    'month-nav month-nav'
+    'weekdays category'
+    'calendar weekly'
+    'legend monthly';
 }
 
 .month-nav {
@@ -357,6 +414,7 @@ export default {
   font-size: smaller;
 }
 
+/* TODO: use new custom select options */
 .category,
 .subcategory {
   width: 100%;
@@ -364,7 +422,6 @@ export default {
   color: var(--text-color-black);
   outline: none;
   border: none;
-  border-bottom: 2px solid var(--background-color);
   text-transform: capitalize;
 }
 
@@ -386,14 +443,76 @@ export default {
   padding: 0 var(--padding-small);
   background-color: var(--primary-color);
   color: var(--text-color-black);
+}
+
+.weekly {
+  grid-area: weekly;
+}
+
+.monthly {
+  grid-area: monthly;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  background-color: var(--primary-color);
+  color: var(--text-color-black);
+  padding: var(--padding-small);
   border-bottom-left-radius: var(--border-radius);
   border-bottom-right-radius: var(--border-radius);
+  min-width: 8ch;
+}
+
+.month-range-label {
+  font-size: 0.75em;
+  opacity: 0.6;
 }
 
 .stat {
   display: flex;
   flex-direction: row;
   align-items: center;
+  white-space: nowrap;
+}
+
+.legend {
+  grid-area: legend;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: var(--padding-small) 0;
+  font-size: smaller;
+  color: var(--text-color-faded);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legend-icon {
+  display: inline-grid;
+  place-content: center;
+  height: 1.6em;
+  width: 1.6em;
+  border-radius: 50%;
+  font-size: 0.75em;
+  line-height: 1;
+}
+
+.today-icon {
+  background-color: var(--primary-color);
+}
+
+.has-shift-icon {
+  background-color: light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.1));
+}
+
+.selected-icon {
+  border-radius: 0;
+  border: 1.5px solid light-dark(black, lightgrey);
 }
 
 .summary {

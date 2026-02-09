@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { api } from '@/api';
+import api from '@/api';
 import { useAuthStore } from './authStore';
 import Shift from '@/models/Shift';
 import Duration from '@/models/Duration';
@@ -48,8 +48,8 @@ export const useShiftsStore = defineStore('shifts', {
           return (
             // 'startTime' is before the next day of the selected date
             new Date(shift.startTime) < endTime &&
-            // 'endTime' is after the start of the selected date
-            new Date(shift.endTime) > startTime
+            // 'endTime' is at or after the start of the selected date
+            new Date(shift.endTime) >= startTime
           );
         });
       };
@@ -104,27 +104,27 @@ export const useShiftsStore = defineStore('shifts', {
     // TODO: Add parameters for filtering
     async fetch(): Promise<void> {
       await withStatus(this, async () => {
+        let parsedData = JSON.parse(localStorage.getItem('shifts') || localStorage.getItem('entries') || '[]');
+
         const authStore = useAuthStore();
-        try {
-          let rawData = JSON.parse(localStorage.getItem('shifts') || localStorage.getItem('entries') || '[]');
+        const syncPending = localStorage.getItem('syncPending') === 'true';
 
-          // API if authenticated; otherwise localStorage
-          if (authStore.isAuthenticated) {
-            rawData = await api.shifts.fetch();
-          }
-
-          const parsed = Shift.parseAll(rawData);
-
-          this.shifts = parsed.shifts;
-          if (!parsed.success) {
-            alert('Some shifts could not be loaded.');
-          }
-
-          localStorage.removeItem('entries'); // Remove old key
-        } catch (error: any) {
-          console.error(error);
-          throw new Error('Failed to fetch shifts: ' + (error && error.message ? error.message : String(error)));
+        // Use local data if not authenticated OR if sync is pending (user clicked "Decide Later")
+        if (authStore.isAuthenticated && !syncPending) {
+          parsedData = await api.shifts.fetch();
         }
+
+        // Parse & Validate
+        const parsed = Shift.parseAll(parsedData);
+
+        this.shifts = parsed.shifts;
+        if (!parsed.success) {
+          alert('Some shifts could not be loaded.');
+        }
+
+        localStorage.removeItem('entries'); // Remove old key
+
+        console.log('Fetched shifts:', this.shifts);
       });
     },
 
@@ -159,23 +159,19 @@ export const useShiftsStore = defineStore('shifts', {
           return;
         }
 
-        try {
-          if (validatedShifts.length === 1) {
-            // Single-shift create
-            const created = await api.shifts.create(validatedShifts[0]);
-            console.log('Created shift from API:', created);
-            const parsed = Shift.parse(created);
-            this.shifts.push(parsed);
-          } else {
-            // Batch create
-            const createdBatch = await api.shifts.createBatch(validatedShifts);
-            console.log('Created shifts from API (batch):', createdBatch);
+        if (validatedShifts.length === 1) {
+          // Single-shift create
+          const created = await api.shifts.create(validatedShifts[0]);
+          console.log('Created shift from API:', created);
+          const parsed = Shift.parse(created);
+          this.shifts.push(parsed);
+        } else {
+          // Batch create
+          const createdBatch = await api.shifts.createBatch(validatedShifts);
+          console.log('Created shifts from API (batch):', createdBatch);
 
-            const parsedBatch = Shift.parseAll(createdBatch).shifts;
-            this.shifts.push(...parsedBatch);
-          }
-        } catch (error: any) {
-          throw new Error('Some shifts could not be created — ' + (error?.message ?? String(error)));
+          const parsedBatch = Shift.parseAll(createdBatch).shifts;
+          this.shifts.push(...parsedBatch);
         }
       });
     },
@@ -204,16 +200,16 @@ export const useShiftsStore = defineStore('shifts', {
           return;
         }
 
-        try {
-          const updated = await api.shifts.update(id, shiftToUpdate);
+        const updated = await api.shifts.update(id, shiftToUpdate);
 
-          const index = this.shifts.findIndex((shift) => shift.id === updated.id);
+        const parsed = Shift.parse(updated);
+        const index = this.shifts.findIndex((shift) => shift.id === parsed.id);
 
-          // No need to check for -1; if not found, js will add it
-          this.shifts[index] = Shift.parse(updated);
-          return;
-        } catch (error: unknown) {
-          throw new Error('Failed to update shift: ' + (error instanceof Error ? error.message : String(error)));
+        if (index === -1) {
+          // Shift wasn't found locally — append it so the UI stays in sync
+          this.shifts.push(parsed);
+        } else {
+          this.shifts[index] = parsed;
         }
       });
     },
@@ -223,11 +219,7 @@ export const useShiftsStore = defineStore('shifts', {
         const authStore = useAuthStore();
 
         if (authStore.isAuthenticated) {
-          try {
-            await api.shifts.delete(input);
-          } catch (error: any) {
-            throw new Error('Failed to delete shift: ' + (error && error.message ? error.message : String(error)));
-          }
+          await api.shifts.delete(input);
         }
 
         // Single shift ID

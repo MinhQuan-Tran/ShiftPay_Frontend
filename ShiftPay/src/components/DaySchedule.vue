@@ -151,8 +151,7 @@ export default {
       })" :key="shift.id" :shift="(shift as Shift)" :selected-date="selectedDate" @edit-shift="handleEditShift" />
     </div>
 
-    <BaseDialog ref="clearShiftsDialog" title="Clear Shifts" open-dialog-text="Clear" class="danger"
-      :reset-forms="true">
+    <BaseDialog ref="clearShiftsDialog" title="Clear Shifts" open-dialog-text="Clear" :reset-forms="true">
       <ClearShiftsForm :selected-date="selectedDate" />
     </BaseDialog>
 

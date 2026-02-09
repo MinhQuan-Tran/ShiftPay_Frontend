@@ -1,12 +1,12 @@
 import { defineStore } from 'pinia';
-// import { api } from '@/api';
-// import { useAuthStore } from './authStore';
-import type { WorkInfo } from '@/types';
-import { STATUS, type Status } from '@/types';
+import api from '@/api';
+import { useAuthStore } from './authStore';
+import { STATUS, type Status, type WorkInfo } from '@/types';
 import { withStatus } from '@/utils';
 
 export const useWorkInfosStore = defineStore('workInfos', {
   state: () => ({
+    /** Map keyed by workplace, storing id and payRates */
     workInfos: new Map<string, WorkInfo>(),
     status: STATUS.Ready as Status
   }),
@@ -14,28 +14,28 @@ export const useWorkInfosStore = defineStore('workInfos', {
   actions: {
     async fetch(): Promise<void> {
       await withStatus(this, async () => {
-        // const auth = useAuthStore();
+        let parsedData = JSON.parse(localStorage.getItem('workInfos') || localStorage.getItem('prevWorkInfos') || '[]');
 
-        const rawData = localStorage.getItem('workInfos') || localStorage.getItem('prevWorkInfos') || '{}';
+        const auth = useAuthStore();
+        const syncPending = localStorage.getItem('syncPending') === 'true';
 
-        // if (auth.isAuthenticated) {
-        //   rawData = await api.prevWorkInfos.fetch();
-        // }
+        // Use local data if not authenticated OR if sync is pending (user clicked "Decide Later")
+        if (auth.isAuthenticated && !syncPending) {
+          parsedData = await api.workInfos.fetch();
+        }
 
-        // Parse & Validate
+        console.log('Fetched work infos data:', parsedData);
+
+        // Parse & Validate - store id, workplace, and payRates
         this.workInfos = new Map<string, WorkInfo>(
-          Object.entries(
-            JSON.parse(rawData, function (_, value) {
-              if (typeof value === 'object' && value !== null) {
-                // Convert payRates array to Set
-                if (Array.isArray(value.payRates)) {
-                  value.payRates = new Set(value.payRates);
-                }
-              }
-
-              return value;
-            })
-          )
+          parsedData.map((workInfo: any) => [
+            workInfo.workplace,
+            {
+              id: workInfo.id,
+              workplace: workInfo.workplace,
+              payRates: new Set(workInfo.payRates ?? [])
+            }
+          ])
         );
 
         localStorage.removeItem('prevWorkInfos'); // Remove old key
@@ -55,95 +55,82 @@ export const useWorkInfosStore = defineStore('workInfos', {
           throw new Error('Invalid pay rate');
         }
 
-        // Local update
-        if (!this.workInfos.has(workplace)) {
-          this.workInfos.set(workplace, { payRates: new Set<number>() });
+        // Remote update
+        const auth = useAuthStore();
+
+        if (auth.isAuthenticated) {
+          // Pass existing id if updating, so server merges payRates
+          const existingEntry = this.workInfos.get(workplace);
+          const workInfo = await api.workInfos.createOrUpdate(workplace, [payRate], existingEntry?.id);
+
+          // Replace with server response to ensure consistency
+          this.workInfos.set(workInfo.workplace, {
+            id: workInfo.id,
+            workplace: workInfo.workplace,
+            payRates: new Set(workInfo.payRates ?? [])
+          });
+
+          return;
         }
-        this.workInfos.get(workplace)!.payRates.add(payRate);
+
+        // Local update
+        const existingEntry = this.workInfos.get(workplace);
+        if (!existingEntry) {
+          this.workInfos.set(workplace, {
+            id: crypto.randomUUID(),
+            workplace,
+            payRates: new Set<number>([payRate])
+          });
+        } else {
+          existingEntry.payRates.add(payRate);
+        }
       });
-
-      // const auth = useAuthStore();
-
-      // // Offline / unauthenticated: update locally
-      // if (!auth.isAuthenticated) {
-      //   if (!this.workInfos.has(workplace)) {
-      //     this.workInfos.set(workplace, { payRates: new Set<number>() });
-      //   }
-      //   this.workInfos.get(workplace)!.payRates.add(payRate);
-      //   return;
-      // }
-
-      // // Authenticated: call API, which returns the workplace with just-added payRate
-      // try {
-      //   const createdWorkInfo = await api.prevWorkInfos.create(workplace, payRate);
-
-      //   if (
-      //     typeof createdWorkInfo.workplace !== 'string' ||
-      //     !Array.isArray(createdWorkInfo.payRates) ||
-      //     createdWorkInfo.payRates.length !== 1 ||
-      //     isNaN(Number(createdWorkInfo.payRates[0]))
-      //   ) {
-      //     throw new Error('Invalid work info returned from server. Response: ' + JSON.stringify(createdWorkInfo));
-      //   }
-
-      //   const createdPayRate = Number(createdWorkInfo.payRates[0]);
-
-      //   if (!this.workInfos.has(workplace)) {
-      //     this.workInfos.set(workplace, { payRates: new Set<number>() });
-      //   }
-      //   this.workInfos.get(workplace)!.payRates.add(createdPayRate);
-      // } catch (error: any) {
-      //   throw new Error(
-      //     'Failed to add previous work info: ' + (error && error.message ? error.message : String(error))
-      //   );
-      // }
     },
 
+    /**
+     * Delete a work info by workplace name, or remove a specific pay rate.
+     * Uses the stored ID for the API call.
+     */
     async delete(workplace: string, payRate?: number): Promise<void> {
-      // const auth = useAuthStore();
-
-      // if (auth.isAuthenticated) {
-      //   try {
-      //     if (typeof payRate === 'number') {
-      //       await api.prevWorkInfos.delete(workplace, payRate);
-      //     } else {
-      //       await api.prevWorkInfos.delete(workplace);
-      //     }
-      //   } catch (error: any) {
-      //     this.error = error && error.message ? error.message : String(error);
-      //     // fall through to local update to keep UI responsive
-      //   }
-      // }
-
       await withStatus(this, async () => {
-        // Local update
-        if (typeof payRate === 'number') {
-          if (this.workInfos.get(workplace)) {
-            this.workInfos.get(workplace)!.payRates.delete(Number(payRate));
-            if (this.workInfos.get(workplace)!.payRates.size === 0) {
-              this.workInfos.delete(workplace);
-            }
+        const auth = useAuthStore();
+        const entry = this.workInfos.get(workplace);
+
+        // Remote update
+        if (auth.isAuthenticated) {
+          if (!entry?.id) {
+            throw new Error(`Cannot delete: "${workplace}" not found`);
           }
+
+          await api.workInfos.delete(entry.id, payRate);
+          await this.fetch(); // Refresh from server
+          return;
         }
+
+        // Local update
+        if (payRate === undefined) {
+          this.workInfos.delete(workplace);
+          return;
+        }
+
+        entry?.payRates.delete(Number(payRate));
       });
     },
 
     /**
      * Persist to localStorage on ANY state change (detached subscription).
      * Mirrors shiftStore's auto-persist pattern.
+     * Serializes as array of WorkInfoDTO-like objects for consistency with API format.
      */
     enableAutoPersist(): void {
       this.$subscribe(
         function (_mutation, state) {
-          localStorage.setItem(
-            'prevWorkInfos',
-            JSON.stringify(state.workInfos, function (_, value) {
-              if (value instanceof Set) {
-                return Array.from(value);
-              }
-              return value;
-            })
-          );
+          const serialized = Array.from(state.workInfos.values()).map((entry) => ({
+            id: entry.id,
+            workplace: entry.workplace,
+            payRates: Array.from(entry.payRates)
+          }));
+          localStorage.setItem('workInfos', JSON.stringify(serialized));
         },
         { detached: true }
       );

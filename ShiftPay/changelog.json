@@ -138,12 +138,16 @@
     ]
   },
   {
-    "version": "0.3.10",
-    "date": "2025-12-19T00:00:00+1100",
+    "version": "0.4.0",
+    "date": "2026-02-09T00:00:00+1100",
     "changes": [
       "[Feature] Billable hours summary in week view",
       "[Fix] Incorrect duration assignment in week calculations",
-      "Enhance week stats UI and schedule layout"
+      "[Fix] Incorrect month change at the end of the month",
+      "Enhance week stats UI and schedule layout",
+      "Improve shift item layout with wrapping support",
+      "Display full workplace names without truncation",
+      "Enhance shift income alignment for better readability"
     ]
   }
 ]

@@ -2,17 +2,16 @@
 import { mapStores } from 'pinia';
 
 import { useAuthStore } from '@/stores/authStore';
-import { useShiftsStore } from '@/stores/shiftsStore';
-import { useShiftTemplatesStore } from '@/stores/shiftTemplatesStore';
-import { useWorkInfosStore } from '@/stores/workInfosStore';
-import { useShiftSessionStore } from '@/stores/shiftSessionStore';
-
-import Shift from '@/models/Shift';
-import type { WorkInfo } from '@/types';
 
 export default {
+  emits: ['login', 'import'],
+
   computed: {
-    ...mapStores(useAuthStore, useShiftsStore, useShiftTemplatesStore, useWorkInfosStore, useShiftSessionStore)
+    ...mapStores(useAuthStore),
+
+    isSyncPending(): boolean {
+      return localStorage.getItem('syncPending') === 'true';
+    }
   },
 
   methods: {
@@ -27,208 +26,187 @@ export default {
       URL.revokeObjectURL(url);
     },
 
-    uploadData(event: Event) {
-      if (!confirm('Are you sure you want to import data?')) return;
-
-      const fileInput = event.target as HTMLInputElement;
-      const file = fileInput.files ? fileInput.files[0] : null;
-
-      if (!file) return;
-
-      const reader = new FileReader();
-
-      reader.onload = (e: ProgressEvent<FileReader>): void => {
-        console.log('File uploaded');
-
-        const data = JSON.parse(e.target?.result as string);
-
-        console.log('Parsed data:', data);
-
-        console.log('Validating data...');
-
-        const shifts = new Promise<Shift[]>((resolve, reject) => {
-          try {
-            const parsedShifts = Shift.parseAll(JSON.parse(data.shifts || data.entries));
-            console.log('Shifts:', parsedShifts);
-
-            if (!parsedShifts.success && !confirm('Some shifts could not be loaded. Do you want to proceed?')) {
-              // Stop import process
-              throw new Error('User aborted due to parse errors.');
-            }
-
-            console.log('Shifts parsed successfully.');
-            resolve(parsedShifts.shifts);
-          } catch (error) {
-            reject(error);
-          }
-        });
-
-        const templates = new Promise<Map<string, Shift>>((resolve, reject) => {
-          try {
-            const parsedTemplates: Map<string, Shift> = Object.entries(JSON.parse(data.shiftTemplates || data.templates)).reduce((acc: any, [name, template]: [string, any]) => {
-              try {
-                acc.set(name, Shift.parse(template.shift || template.entry || template));
-              } catch (error) {
-                if (!confirm(`Failed to parse template "${name}". Do you want to skip it?`)) {
-                  // Stop import process
-                  throw new Error('User aborted due to parse errors.');
-                }
-
-                console.warn(`Skipping template "${name}" due to parse error.`);
-                return acc;
-              }
-
-              return acc;
-            }, new Map<string, Shift>());
-            console.log('Templates:', parsedTemplates);
-
-            if (typeof parsedTemplates !== 'object' || parsedTemplates === null) {
-              throw new Error('Invalid templates data.');
-            }
-
-            console.log('Templates parsed successfully.');
-            resolve(parsedTemplates);
-          } catch (error) {
-            reject(error);
-          }
-        });
-
-        const workInfos = new Promise<Map<string, WorkInfo>>((resolve, reject) => {
-          try {
-            const parsedWorkInfos: Map<string, WorkInfo> = Object.entries(JSON.parse(data.workInfos || data.prevWorkInfos)).reduce((acc: any, [workplace, info]: [string, any]) => {
-              if (typeof info !== 'object' || info === null) {
-                if (!confirm(`Invalid data for workplace "${workplace}". Do you want to skip it?`)) {
-                  // Stop import process
-                  throw new Error('User aborted due to parse errors.');
-                }
-
-                console.warn(`Skipping workplace "${workplace}" due to invalid data.`);
-                return acc;
-              }
-
-              try {
-                const payRates = new Set(info.payRates || info.payRate);
-
-                if (![...payRates].every((rate: any) => typeof rate === 'number')) {
-                  throw new Error(`Invalid pay rates for workplace "${workplace}".`);
-                }
-
-                acc.set(workplace, {
-                  payRates
-                } as WorkInfo);
-              } catch (error) {
-                if (!confirm(`Failed to parse pay rates for workplace "${workplace}". Do you want to skip it?`)) {
-                  // Stop import process
-                  throw error;
-                }
-
-                console.warn(`Skipping workplace "${workplace}" due to parse error.`);
-                return acc;
-              }
-
-              return acc;
-            }, new Map<string, WorkInfo>());
-            console.log('Work Infos:', parsedWorkInfos);
-
-            if (typeof parsedWorkInfos !== 'object' || parsedWorkInfos === null) {
-              throw new Error('Invalid work infos data.');
-            }
-
-            console.log('Work Infos parsed successfully.');
-            resolve(parsedWorkInfos);
-          } catch (error) {
-            reject(error);
-          }
-        });
-
-        const checkInTime = new Promise<Date | null>((resolve, reject) => {
-          if (!data.checkInTime) {
-            console.log('No Check-In Time found.');
-            resolve(null);
-            return;
-          }
-
-          try {
-            const parsedCheckInTime = new Date(data.checkInTime);
-
-            if (isNaN(parsedCheckInTime.getTime())) {
-              if (!confirm('Invalid Check-In Time. Do you want to skip it?')) {
-                // Stop import process
-                throw new Error('User aborted due to parse errors.');
-              }
-
-              console.warn('Skipping Check-In Time due to invalid data.');
-              resolve(null);
-            }
-
-            console.log('Check-In Time parsed successfully.');
-            resolve(parsedCheckInTime);
-          } catch (error) {
-            reject(error);
-          }
-        });
-
-        Promise.all([shifts, templates, workInfos, checkInTime]).then(([shifts, templates, workInfos, checkInTime]) => {
-          console.log('All data validated. Importing...');
-
-          this.shiftsStore.add(shifts);
-
-          templates.forEach((template: Shift, name: string) => {
-            this.shiftTemplatesStore.add(name, template);
-          });
-
-          workInfos.forEach((info: WorkInfo, workplace: string) => {
-            info.payRates.forEach((rate: number) => {
-              this.workInfosStore.add(workplace, rate);
-            });
-          });
-
-          if (checkInTime) this.shiftSessionStore.set(checkInTime);
-          else this.shiftSessionStore.clear();
-        })
-          .then(() => {
-            console.log('Data import complete.');
-            alert('Data import complete.');
-          })
-          .catch((error) => {
-            console.error('Error during data import:', error);
-            alert(`Error during data import`);
-          });
-      };
-
-      reader.readAsText(file);
-    },
-
     async handleLogin() {
-      await this.authStore.login();
-      this.shiftsStore.fetch();
+      // Emit event first, let parent handle the full flow
+      // This ensures the dialog can be shown even after menu closes
+      this.$emit('login');
     }
   }
 };
 </script>
 
 <template>
-  <div class="main-menu">
-    <input type="file" id="fileInput" accept=".json" @change="uploadData" />
-    <button id="downloadButton" @click="downloadData">Download Data</button>
-    <button v-if="!authStore.isAuthenticated" @click="handleLogin">Login</button>
-    <button v-else @click="authStore.logout">Logout</button>
+  <div class="main-menu" @click.stop>
+    <span class="menu-heading">Data</span>
+    <button class="menu-item" @click="$emit('import')">
+      <span class="menu-icon">
+        <img class="inline-icon" src="https://img.icons8.com/fluency/96/login-rounded.png" alt="import" />
+      </span>
+      <span class="menu-label">Import Data</span>
+    </button>
+    <button class="menu-item" @click="downloadData">
+      <span class="menu-icon">
+        <img class="inline-icon" src="https://img.icons8.com/fluency/96/logout-rounded.png" alt="export" />
+      </span>
+      <span class="menu-label">Export Data</span>
+    </button>
+
+    <hr class="menu-divider" />
+
+    <span class="menu-heading">Account</span>
+    <button v-if="!authStore.isAuthenticated" class="menu-item" @click="handleLogin">
+      <span class="menu-icon">
+        <img class="inline-icon" src="https://img.icons8.com/fluency/96/enter-2.png" alt="login" />
+      </span>
+      <span class="menu-label">Login</span>
+    </button>
+    <button v-else class="menu-item menu-item--danger" @click="authStore.logout" :disabled="isSyncPending"
+      :title="isSyncPending ? 'Sync your data first' : ''">
+      <span class="menu-icon">
+        <img class="inline-icon" src="https://img.icons8.com/fluency/96/export.png" alt="logout" />
+      </span>
+      <span class="menu-label">Logout</span>
+      <span v-if="isSyncPending" class="menu-badge">Sync first</span>
+    </button>
   </div>
 </template>
 
 <style scoped>
 .main-menu {
   position: absolute;
-  top: calc(100% + var(--padding));
+  top: calc(100% + 0.6em);
   right: 0;
   z-index: 2;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: var(--padding);
-  width: 250px;
-  border-radius: var(--border-radius);
+  cursor: default;
+  width: 240px;
+  padding: 0.4em 0;
+  border-radius: 12px;
   background-color: var(--popup-background-color);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.12);
+  animation: menu-enter 0.18s ease-out;
+}
+
+@keyframes menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Section headings ── */
+.menu-heading {
+  padding: 0.5em 1em 0.25em;
+  font-size: 0.7em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-color-faded);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Divider ── */
+.menu-divider {
+  border: none;
+  height: 1px;
+  margin: 0.3em 0.8em;
+  background: var(--hover-overlay);
+}
+
+/* ── Menu items ── */
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.6em 1em;
+  margin: 0 0.4em;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-color);
+  font-weight: 500;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  box-shadow: none;
+  line-height: 1.4;
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.menu-item:hover {
+  background: var(--hover-overlay);
+  box-shadow: none;
+  opacity: 1;
+  transform: none;
+}
+
+.menu-item:active {
+  transform: scale(0.98);
+}
+
+.menu-item:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: -2px;
+}
+
+/* ── Icon ── */
+.menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6em;
+  height: 1.6em;
+  font-size: 1.05em;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+
+/* ── Label ── */
+.menu-label {
+  background: transparent;
+  flex: 1;
+}
+
+/* ── Badge (sync warning) ── */
+.menu-badge {
+  font-size: 0.65em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15em 0.5em;
+  border-radius: 4px;
+  background: var(--warning-color);
+  color: var(--text-color-black);
+}
+
+/* ── Danger variant ── */
+.menu-item--danger {
+  color: var(--danger-color);
+}
+
+.menu-item--danger:hover {
+  background: light-dark(rgba(255, 100, 100, 0.1), rgba(255, 100, 100, 0.15));
+}
+
+/* ── Disabled state ── */
+.menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.menu-item:disabled:hover {
+  background: transparent;
+  transform: none;
 }
 </style>

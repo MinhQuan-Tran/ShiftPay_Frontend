@@ -90,7 +90,7 @@ export async function withStatus<T>(store: { status: Status }, executor: () => P
     return result;
   } catch (error: any) {
     store.status = STATUS.Error;
-    throw error instanceof Error ? error : new Error(String(error));
+    throw error;
   } finally {
     if (store.status !== STATUS.Error) {
       store.status = STATUS.Ready;
