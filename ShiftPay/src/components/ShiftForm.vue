@@ -37,7 +37,7 @@ export default {
       saveShiftTemplate: false,
       deleteShiftTemplate: false,
       recurringShift: false,
-      shiftName: '',
+      templateName: '',
       hiddenElements: [] as Element[], // Elements to hide when holding a button in action bar
       currentAction: '', // Track the current action being performed for loading state
     };
@@ -45,6 +45,10 @@ export default {
 
   computed: {
     ...mapStores(useShiftsStore, useShiftTemplatesStore, useWorkInfosStore, useShiftSessionStore),
+
+    isEditingTemplate(): boolean {
+      return this.saveShiftTemplate && this.shiftTemplatesStore.templates.has(this.templateName);
+    },
   },
 
   emits: {
@@ -175,7 +179,7 @@ export default {
 
           // Add shift template if needed
           if (this.saveShiftTemplate) {
-            this.shiftTemplatesStore.add(this.shiftName, shift).catch((error) => {
+            this.shiftTemplatesStore.add(this.templateName, shift).catch((error) => {
               alert('Failed to add shift template: ' + error);
               // Continue even if it fails
             });
@@ -215,6 +219,15 @@ export default {
           });
           break;
 
+        case 'edit template': {
+          const shift = this.parseFormData();
+          await this.shiftTemplatesStore.add(this.templateName, shift).catch((error) => {
+            alert('Failed to update shift template: ' + error);
+            throw error;
+          });
+          break;
+        }
+
         case 'remove check in':
           this.shiftSessionStore.clear();
           break;
@@ -248,6 +261,33 @@ export default {
       return localDate.toISOString().slice(0, 16);
     },
 
+    applyTemplate(name: string) {
+      this.templateName = name;
+      const template = this.shiftTemplatesStore.templates.get(name);
+      if (!template) return;
+
+      const shift = template.shift as Shift;
+      const duration = shift.endTime.getTime() - shift.startTime.getTime();
+
+      this.formData.workplace = shift.workplace;
+      this.formData.payRate = shift.payRate;
+
+      // Adjust dates to selected date
+      const startTime = new Date(shift.startTime);
+      startTime.setFullYear(
+        this.selectedDate.getFullYear(),
+        this.selectedDate.getMonth(),
+        this.selectedDate.getDate()
+      );
+      this.formData.startTime = startTime;
+      this.formData.endTime = new Date(startTime.getTime() + duration);
+
+      // Copy unpaid breaks
+      this.formData.unpaidBreaks = (shift.unpaidBreaks ?? []).map(
+        (b: Duration) => new Duration({ hours: b.hours, minutes: b.minutes })
+      );
+    },
+
     addUnpaidBreak() {
       if (!this.formData.unpaidBreaks) {
         this.formData.unpaidBreaks = [] as Duration[];
@@ -275,69 +315,92 @@ export default {
   <form @submit.prevent="shiftAction" @reset.prevent="resetForm" ref="shiftForm">
     <input type="hidden" name="id" v-model="formData.id" />
 
-    <InputLabel label-text="Shift Templates" v-if="action === 'add'" v-model:toggle-value="deleteShiftTemplate"
-      toggle-color="var(--danger-color)" sub-text="Delete" :loading="shiftTemplatesStore.status === STATUS.Loading">
-      <div class="shift-templates">
-        <button v-for="[name, template] in shiftTemplatesStore.templates" :key="name"
-          @click="deleteShiftTemplate ? shiftTemplatesStore.delete(name) : quickAddShift(template.shift as Shift)"
-          type="button" class="shift-info">
-          <div class="name">{{ name }}</div>
-        </button>
-        <button type="button" :class="['shift-info', { active: saveShiftTemplate }]" id="save-shift-template-btn"
-          @click="saveShiftTemplate = !saveShiftTemplate">
-          <div class="name">&nbsp;+&nbsp;</div>
-        </button>
+    <!-- ── Shift Templates ── -->
+    <div v-if="action === 'add'" class="form-section">
+      <span class="section-label">Templates</span>
+
+      <InputLabel label-text="Shift Templates" v-model:toggle-value="deleteShiftTemplate"
+        toggle-color="var(--danger-color)" sub-text="Delete" :loading="shiftTemplatesStore.status === STATUS.Loading">
+        <div class="shift-templates">
+          <button v-for="[name, template] in shiftTemplatesStore.templates" :key="name"
+            @click="deleteShiftTemplate ? shiftTemplatesStore.delete(name) : quickAddShift(template.shift as Shift)"
+            type="button" :class="['template-chip', { 'template-chip--delete': deleteShiftTemplate }]">
+            <span class="template-chip-name">{{ name }}</span>
+          </button>
+          <button type="button" :class="['template-chip template-chip--add', { active: saveShiftTemplate }]"
+            id="save-shift-template-btn" @click="saveShiftTemplate = !saveShiftTemplate">
+            <span class="template-chip-name">+</span>
+          </button>
+        </div>
+      </InputLabel>
+
+      <InputLabel label-text="Template Name" for-id="template-name" v-if="saveShiftTemplate">
+        <ComboBox :value="templateName" @update:value="applyTemplate"
+          :list="Array.from(shiftTemplatesStore.templates.keys())">
+          <input type="text" id="template-name" name="templateName" placeholder="e.g. McDonald | Delivery"
+            v-model="templateName" required />
+        </ComboBox>
+      </InputLabel>
+    </div>
+
+    <!-- ── Job Details ── -->
+    <div class="form-section">
+      <span class="section-label">Job Details</span>
+
+      <InputLabel label-text="Workplace" for-id="workplace" :loading="workInfosStore.status === STATUS.Loading">
+        <ComboBox :value="formData?.workplace || ''"
+          @update:value="newValue => { formData.workplace = newValue; formData.payRate = undefined; }"
+          :list="Array.from(workInfosStore.workInfos.keys())"
+          @delete-item="workInfo => workInfosStore.delete(workInfo).catch((error) => alert('Failed to delete workplace \n' + error.message))"
+          deletable>
+          <input type="search" id="workplace" name="workplace" placeholder="e.g. Company Name"
+            v-model="formData.workplace" required />
+        </ComboBox>
+      </InputLabel>
+
+      <InputLabel label-text="Pay Rate" for-id="pay-rate" :loading="workInfosStore.status === STATUS.Loading">
+        <ComboBox :value="formData.payRate ? formData.payRate.toString() : ''"
+          @update:value="(newValue: number | undefined) => (formData.payRate = Number(newValue))" :list="formData.workplace && workInfosStore.workInfos.get(formData.workplace)?.payRates
+            ? Array.from(workInfosStore.workInfos.get(formData.workplace)?.payRates ?? []).map((pr) => pr.toString())
+            : []
+            "
+          @delete-item="payRate => formData.workplace ? workInfosStore.delete(formData.workplace, Number(payRate)).catch((error) => alert('Failed to delete pay rate \n' + error.message)) : null"
+          deletable>
+          <input type="number" id="pay-rate" name="payRate" placeholder="e.g. 23.23" v-model="formData.payRate"
+            step="0.01" min="0" max="1000" required />
+        </ComboBox>
+      </InputLabel>
+    </div>
+
+    <!-- ── Schedule ── -->
+    <div class="form-section">
+      <span class="section-label">Schedule</span>
+
+      <div class="time-row">
+        <InputLabel label-text="Start Time" for-id="start-time">
+          <input type="datetime-local" id="start-time" name="start-time" :value="toDateTimeLocal(formData.startTime)"
+            @input="
+              (event) => {
+                formData.startTime = new Date((event.target as HTMLInputElement).value);
+                if (formData.endTime && formData.startTime > formData.endTime) {
+                  formData.endTime = formData.startTime;
+                }
+              }
+            " required />
+        </InputLabel>
+
+        <InputLabel label-text="End Time" for-id="end-time">
+          <input type="datetime-local" id="end-time" name="end-time" :value="toDateTimeLocal(formData.endTime)"
+            :min="toDateTimeLocal(formData.startTime)"
+            @input="(event) => (formData.endTime = new Date((event.target as HTMLInputElement).value))" required />
+        </InputLabel>
       </div>
-    </InputLabel>
+    </div>
 
-    <InputLabel label-text="Shift Name" for-id="shift-name" v-if="saveShiftTemplate">
-      <input type="text" id="shift-name" name="shiftName" placeholder="e.g. McDonald | Delivery" v-model="shiftName"
-        required />
-    </InputLabel>
+    <!-- ── Unpaid Breaks ── -->
+    <div class="form-section">
+      <span class="section-label">Unpaid Breaks</span>
 
-    <InputLabel label-text="Workplace" for-id="workplace" :loading="workInfosStore.status === STATUS.Loading">
-      <ComboBox :value="formData?.workplace || ''"
-        @update:value="newValue => { formData.workplace = newValue; formData.payRate = undefined; }"
-        :list="Array.from(workInfosStore.workInfos.keys())"
-        @delete-item="workInfo => workInfosStore.delete(workInfo).catch((error) => alert('Failed to delete workplace \n' + error.message))"
-        deletable>
-        <input type="search" id="workplace" name="workplace" placeholder="e.g. Company Name"
-          v-model="formData.workplace" required />
-      </ComboBox>
-    </InputLabel>
-
-    <InputLabel label-text="Pay Rate" for-id="pay-rate" :loading="workInfosStore.status === STATUS.Loading">
-      <ComboBox :value="formData.payRate ? formData.payRate.toString() : ''"
-        @update:value="(newValue: number | undefined) => (formData.payRate = Number(newValue))" :list="formData.workplace && workInfosStore.workInfos.get(formData.workplace)?.payRates
-          ? Array.from(workInfosStore.workInfos.get(formData.workplace)?.payRates ?? []).map((pr) => pr.toString())
-          : []
-          "
-        @delete-item="payRate => formData.workplace ? workInfosStore.delete(formData.workplace, Number(payRate)).catch((error) => alert('Failed to delete pay rate \n' + error.message)) : null"
-        deletable>
-        <input type="number" id="pay-rate" name="payRate" placeholder="e.g. 23.23" v-model="formData.payRate"
-          step="0.01" min="0" max="1000" required />
-      </ComboBox>
-    </InputLabel>
-
-    <InputLabel label-text="From" for-id="start-time">
-      <input type="datetime-local" id="start-time" name="start-time" :value="toDateTimeLocal(formData.startTime)"
-        @input="
-          (event) => {
-            formData.startTime = new Date((event.target as HTMLInputElement).value);
-            if (formData.endTime && formData.startTime > formData.endTime) {
-              formData.endTime = formData.startTime;
-            }
-          }
-        " required />
-    </InputLabel>
-
-    <InputLabel label-text="To" for-id="end-time">
-      <input type="datetime-local" id="end-time" name="end-time" :value="toDateTimeLocal(formData.endTime)"
-        :min="toDateTimeLocal(formData.startTime)"
-        @input="(event) => (formData.endTime = new Date((event.target as HTMLInputElement).value))" required />
-    </InputLabel>
-
-    <InputLabel label-text="Unpaid Break(s)" for-id="unpaid-breaks">
       <div class="unpaid-breaks">
         <div v-for="(unpaidBreak, index) in formData.unpaidBreaks" :key="index" class="unpaid-break">
           <!-- Hours -->
@@ -381,22 +444,30 @@ export default {
         </div>
 
         <!-- Add unpaid break -->
-        <button type="button" @click="addUnpaidBreak">+</button>
+        <button type="button" class="add-row-btn" @click="addUnpaidBreak">+ Add Break</button>
       </div>
-    </InputLabel>
+    </div>
 
-    <InputLabel v-if="action === 'add' || action === 'check in/out'" label-text="Recurring?" for-id="recurring"
-      v-model:toggle-value="recurringShift">
-      <div v-if="recurringShift" class="recurring-inputs">
-        <span>Shift repeat every:</span>
-        <input type="number" ref="recurring-day" id="recurring-day" name="recurringDay" placeholder="Day" min="0"
-          max="31" />
-        <input type="number" ref="recurring-month" id="recurring-month" name="recurringMonth" placeholder="Month"
-          min="0" max="12" />
-        <input type="number" ref="recurring-year" id="recurring-year" name="recurringYear" placeholder="Year" min="0" />
-        <input type="date" ref="recurring-end-date" id="recurring-end-date" name="recurringEndDate" required />
-      </div>
-    </InputLabel>
+    <!-- ── Recurring ── -->
+    <div v-if="action === 'add' || action === 'check in/out'" class="form-section">
+      <span class="section-label">Recurring</span>
+
+      <InputLabel label-text="Enable" for-id="recurring" v-model:toggle-value="recurringShift">
+        <div v-if="recurringShift" class="recurring-inputs">
+          <span>Shift repeat every:</span>
+          <input type="number" ref="recurring-day" id="recurring-day" name="recurringDay" placeholder="Day" min="0"
+            max="31" />
+          <input type="number" ref="recurring-month" id="recurring-month" name="recurringMonth" placeholder="Month"
+            min="0" max="12" />
+          <input type="number" ref="recurring-year" id="recurring-year" name="recurringYear" placeholder="Year"
+            min="0" />
+          <input type="date" ref="recurring-end-date" id="recurring-end-date" name="recurringEndDate" required />
+        </div>
+      </InputLabel>
+    </div>
+
+    <!-- ── Actions ── -->
+    <div class="action-divider"></div>
 
     <div ref="actionBar" class="actions">
       <!-- Edit -->
@@ -424,6 +495,15 @@ export default {
           Remove
         </ButtonConfirm>
 
+        <button v-if="isEditingTemplate" type="submit" name="action" value="edit template"
+          :class="['warning', { focus: currentAction === 'edit template' }]" id="edit-template-btn"
+          :disabled="shiftTemplatesStore.status === STATUS.Loading">
+          <span v-if="currentAction === 'edit template' && shiftTemplatesStore.status === STATUS.Loading"
+            class="button-spinner"></span>
+          {{ currentAction === 'edit template' && shiftTemplatesStore.status === STATUS.Loading ?
+            'Saving...' : 'Edit Template' }}
+        </button>
+
         <button type="submit" name="action" value="add"
           :class="['primary', { focus: currentAction === 'add', active: saveShiftTemplate }]" id="add-shift-btn"
           :disabled="shiftsStore.status === STATUS.Loading">
@@ -439,33 +519,175 @@ export default {
 
 <style scoped>
 form {
-  gap: calc(var(--padding) * 1.5);
+  gap: 0.6em;
   position: relative;
 }
 
+/* ── Section cards ── */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--padding) * 1.2);
+  border-left: 2px solid light-dark(rgba(71, 172, 255, 0.3), rgba(71, 172, 255, 0.25));
+  padding: 0.3em 0.4em 0.3em 0.7em;
+}
+
+.section-label {
+  font-size: 0.65em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--primary-color);
+  user-select: none;
+}
+
+/* ── Shift template chips ── */
 .shift-templates {
   position: relative;
   display: flex;
   overflow-x: auto;
   white-space: nowrap;
-  /* Prevent wrapping */
-  gap: var(--padding-small);
-  padding: var(--padding-small);
+  gap: 0.5em;
+  padding: 0.15em 0;
+  -webkit-overflow-scrolling: touch;
 }
 
-.shift-templates .shift-info {
-  flex: 0 0 auto;
-  /* Prevent buttons from shrinking or growing */
-  background-color: var(--input-background-color);
-  min-width: 80px;
+.template-chip {
+  background: var(--input-background-color);
+}
+
+.template-chip:active {
+  transform: scale(0.97);
+}
+
+.template-chip--delete {
+  outline: 1.5px dashed var(--danger-color);
+  outline-offset: -1.5px;
+}
+
+.template-chip--add {
+  background: transparent;
+  border: 1.5px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
+  color: var(--primary-color);
+  box-shadow: none;
+  min-width: 32px;
+}
+
+.template-chip--add:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background: transparent;
+}
+
+.template-chip-name {
+  font-size: 0.85em;
+  font-weight: 600;
 }
 
 #save-shift-template-btn.active,
 #add-shift-btn.active {
   background-color: var(--success-color) !important;
   color: var(--text-color-black);
+  border-color: transparent;
 }
 
+/* ── Time row (From / To) ── */
+.time-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: calc(var(--padding) * 1.2);
+}
+
+/* ── Unpaid breaks ── */
+.unpaid-breaks {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5em;
+}
+
+.unpaid-break {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: var(--padding-small);
+}
+
+.unpaid-break>* {
+  flex: 1;
+}
+
+.unpaid-break .delete-btn {
+  flex-grow: 0;
+  box-sizing: border-box;
+  box-shadow: none;
+}
+
+.unpaid-break .delete-btn:hover {
+  box-shadow: none;
+}
+
+.add-row-btn {
+  background: transparent;
+  border: 1.5px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
+  box-shadow: none;
+  color: var(--primary-color);
+  font-weight: 600;
+  font-size: 0.85em;
+  border-radius: 8px;
+  padding: 0.5em;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.add-row-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  box-shadow: none;
+  opacity: 1;
+}
+
+/* ── Recurring ── */
+.recurring-inputs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: auto;
+  grid-template-areas:
+    'text text text text'
+    'day month year year'
+    'end-date end-date end-date end-date';
+  gap: var(--padding-small);
+}
+
+.recurring-inputs span {
+  grid-area: text;
+  font-size: 0.85em;
+  color: var(--text-color-faded);
+}
+
+.recurring-inputs input#recurring-day {
+  grid-area: day;
+}
+
+.recurring-inputs input#recurring-month {
+  grid-area: month;
+}
+
+.recurring-inputs input#recurring-year {
+  grid-area: year;
+}
+
+.recurring-inputs input#recurring-end-date {
+  grid-area: end-date;
+}
+
+/* ── Action divider ── */
+.action-divider {
+  height: 1px;
+  background: light-dark(rgba(71, 172, 255, 0.15), rgba(71, 172, 255, 0.12));
+}
+
+/* ── Action bar ── */
 .actions {
   transition: all 0.3s ease;
 }
@@ -478,6 +700,8 @@ form {
 .actions button {
   flex: 1;
   transition: all 0.3s ease;
+  border-radius: 10px;
+  padding: 0.6em 1em;
 }
 
 .actions .danger {
@@ -497,61 +721,7 @@ form {
   flex-grow: 1 !important;
 }
 
-.unpaid-breaks {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--padding-small);
-}
-
-.unpaid-break {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: var(--padding-small);
-}
-
-.unpaid-break>* {
-  flex: 1;
-}
-
-.unpaid-break .delete-btn {
-  flex-grow: 0;
-  box-sizing: border-box;
-}
-
-.recurring-inputs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: auto;
-  grid-template-areas:
-    'text text text text'
-    'day month year year'
-    'end-date end-date end-date end-date';
-  gap: var(--padding-small);
-}
-
-.recurring-inputs span {
-  grid-area: text;
-}
-
-.recurring-inputs input#recurring-day {
-  grid-area: day;
-}
-
-.recurring-inputs input#recurring-month {
-  grid-area: month;
-}
-
-.recurring-inputs input#recurring-year {
-  grid-area: year;
-}
-
-.recurring-inputs input#recurring-end-date {
-  grid-area: end-date;
-}
-
+/* ── Spinner ── */
 .button-spinner {
   display: inline-block;
   width: 1em;
@@ -573,5 +743,30 @@ form {
 button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* ── Mobile optimizations ── */
+input[type='datetime-local'] {
+  min-width: 0;
+}
+
+@media (max-width: 360px) {
+  .form-section {
+    padding: 0.2em 0.2em 0.2em 0.5em;
+  }
+
+  .template-chip {
+    min-width: 60px;
+    padding: 0.35em 0.6em;
+  }
+
+  .template-chip-name {
+    font-size: 0.8em;
+  }
+
+  .actions button {
+    padding: 0.5em 0.6em;
+    font-size: 0.9em;
+  }
 }
 </style>

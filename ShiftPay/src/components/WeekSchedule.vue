@@ -54,6 +54,7 @@ export default {
 
     calendar() {
       const changedDate = new Date(this.today);
+      changedDate.setDate(1);
       changedDate.setMonth(changedDate.getMonth() + this.monthChange);
 
       const firstDayOfMonth = new Date(changedDate.getFullYear(), changedDate.getMonth(), 1, 0, 0, 0, 0);
@@ -118,6 +119,7 @@ export default {
 
     monthStats(): Stats {
       const date = new Date(this.today);
+      date.setDate(1);
       date.setMonth(date.getMonth() + this.monthChange);
 
       const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
@@ -131,6 +133,7 @@ export default {
 
     monthLastDay(): string {
       const date = new Date(this.today);
+      date.setDate(1);
       date.setMonth(date.getMonth() + this.monthChange);
       const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
       const suffix = lastDay === 31 ? 'st' : 'th';
@@ -141,6 +144,7 @@ export default {
   methods: {
     updateTitleByMonth() {
       const date = new Date(this.today);
+      date.setDate(1);
       date.setMonth(date.getMonth() + this.monthChange);
       this.title = date.toLocaleString('default', { month: 'long', year: 'numeric' });
     },
