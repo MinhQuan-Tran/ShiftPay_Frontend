@@ -149,5 +149,10 @@
       "Display full workplace names without truncation",
       "Enhance shift income alignment for better readability"
     ]
+  },
+  {
+    "version": "0.4.1",
+    "date": "2026-02-10T00:00:00+1100",
+    "changes": ["[Fix] Incorrect week display when the week starts in the previous month"]
   }
 ]

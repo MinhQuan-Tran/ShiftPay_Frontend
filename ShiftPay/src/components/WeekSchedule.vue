@@ -22,7 +22,6 @@ export default {
 
     return {
       STATUS,
-      title: 'Week Schedule',
       weekDays: ['M.', 'Tu.', 'W.', 'Th.', 'F', 'Sa.', 'Su.'],
       today,
       monthChange: 0,
@@ -37,6 +36,13 @@ export default {
 
   computed: {
     ...mapStores(useShiftsStore),
+
+    title() {
+      const date = new Date(this.today);
+      date.setDate(1);
+      date.setMonth(date.getMonth() + this.monthChange);
+      return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+    },
 
     selectedStatCategory(): keyof typeof STAT_OPTIONS {
       const selected = this.selectedSubCategoryOption;
@@ -53,21 +59,18 @@ export default {
     },
 
     calendar() {
-      const changedDate = new Date(this.today);
-      changedDate.setDate(1);
-      changedDate.setMonth(changedDate.getMonth() + this.monthChange);
-
-      const firstDayOfMonth = new Date(changedDate.getFullYear(), changedDate.getMonth(), 1, 0, 0, 0, 0);
+      const firstDayOfMonth = new Date(this.today.getFullYear(), this.today.getMonth() + this.monthChange, 1, 0, 0, 0, 0);
       const lastDayOfMonth = new Date(firstDayOfMonth.getFullYear(), firstDayOfMonth.getMonth() + 1, 0, 0, 0, 0, 0);
-      const dayOfWeek = firstDayOfMonth.getDay();
+      const dayOfWeek = firstDayOfMonth.getDay() === 0 ? 7 : firstDayOfMonth.getDay(); // Convert Sunday from 0 to 7 as it is the last day of the week
 
       const firstDateInCalendar = new Date(firstDayOfMonth);
 
       // Set the firstDateInCalendar to the first day of the week (Monday)
-      // e.g. if the first day of the month is on Friday 1 December 2023,
+      // e.g. if the first day of the month is on Friday 1 December 2023 (5th day of the week),
       // then the first day of the week is 1 December 2023 - 5 days = Sunday 26 November 2023
       // Sunday 26 November 2023 + 1 day = Monday 27 November 2023
       firstDateInCalendar.setDate(firstDateInCalendar.getDate() - dayOfWeek + 1);
+      console.log('firstDateInCalendar (adjusted to Monday):', firstDateInCalendar);
 
       // Set the lastDateInCalendar to the last day of the week (Sunday)
       // e.g. if the last day of the month is on Wednesday 31 January 2024,
@@ -142,21 +145,12 @@ export default {
   },
 
   methods: {
-    updateTitleByMonth() {
-      const date = new Date(this.today);
-      date.setDate(1);
-      date.setMonth(date.getMonth() + this.monthChange);
-      this.title = date.toLocaleString('default', { month: 'long', year: 'numeric' });
-    },
-
     goToNextMonth() {
       this.monthChange++;
-      this.updateTitleByMonth();
     },
 
     goToPrevMonth() {
       this.monthChange--;
-      this.updateTitleByMonth();
     },
 
     getLabel(subcat: { label: string; }) {
@@ -190,10 +184,6 @@ export default {
     }
   },
 
-  mounted() {
-    this.updateTitleByMonth();
-  },
-
   updated() {
     const firstChild = document.querySelector('.calendar > *:first-child');
     const secondChild = document.querySelector('.calendar > *:nth-child(2)');
@@ -214,7 +204,7 @@ export default {
       <button class="prev-btn" @click="goToPrevMonth">
         <img src="@/components/icons/next.svg" alt="prev" />
       </button>
-      <b>{{ title }}</b>
+      <b>{{ title ?? 'Week Schedule' }}</b>
       <button class="next-btn" @click="goToNextMonth">
         <img src="@/components/icons/next.svg" alt="next" />
       </button>
