@@ -1,5 +1,5 @@
 <script lang="ts">
-import { type Day, STATUS } from '@/types';
+import { type Day, type DateRange, STATUS } from '@/types';
 import { currencyFormat } from '@/utils';
 
 import { mapStores } from 'pinia';
@@ -9,13 +9,13 @@ import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 export default {
   props: {
-    selectedDate: {
-      type: Date,
-      required: true
+    selectedRange: {
+      type: Object as () => DateRange,
+      required: true as const
     }
   },
 
-  emits: ['update:selectedDate'],
+  emits: ['update:selectedRange'],
 
   data() {
     const today = new Date();
@@ -120,18 +120,21 @@ export default {
       return weeks;
     },
 
-    monthStats(): Stats {
+    monthRange(): DateRange {
       const date = new Date(this.today);
       date.setDate(1);
       date.setMonth(date.getMonth() + this.monthChange);
 
-      const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
-      const lastDayOfMonth = new Date(firstDayOfMonth.getFullYear(), firstDayOfMonth.getMonth() + 1, 0, 0, 0, 0, 0);
+      const start = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
+      const lastDayOfMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0, 0, 0, 0, 0);
+      const end = new Date(lastDayOfMonth);
+      end.setDate(end.getDate() + 1); // Exclusive end: first day of next month at 12am
 
-      const monthEnd = new Date(lastDayOfMonth);
-      monthEnd.setDate(monthEnd.getDate() + 1); // Exclusive end: first day of next month at 12am
+      return { start, end };
+    },
 
-      return this.shiftsStore.stats(firstDayOfMonth, monthEnd);
+    monthStats(): Stats {
+      return this.shiftsStore.stats(this.monthRange.start, this.monthRange.end);
     },
 
     monthLastDay(): string {
@@ -141,6 +144,28 @@ export default {
       const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
       const suffix = lastDay === 31 ? 'st' : 'th';
       return `${lastDay}${suffix}`;
+    },
+
+    // Days outside the selected range that have shifts spanning into the selected range
+    shiftHighlightedDayIndices(): Set<number> {
+      const { start, end } = this.selectedRange;
+      // Only applies when a full week is selected
+      const isWeekRange = this.weekStats.some(w =>
+        w.start.getTime() === start.getTime() && w.end.getTime() === end.getTime()
+      );
+      if (!isWeekRange) return new Set<number>();
+
+      const weekShifts = this.shiftsStore.range(start, end);
+      const indices = new Set<number>();
+
+      this.calendar.forEach((day, i) => {
+        if (day.dayStartTime >= start && day.dayStartTime < end) return; // already in-range
+        if (weekShifts.some(shift => shift.startTime < day.dayEndTime && shift.endTime > day.dayStartTime)) {
+          indices.add(i);
+        }
+      });
+
+      return indices;
     },
   },
 
@@ -155,6 +180,35 @@ export default {
 
     getLabel(subcat: { label: string; }) {
       return subcat.label;
+    },
+
+    toggleWeekSelection(index: number) {
+      const week = this.weekStats[index];
+      if (!week) return;
+      const isSelected =
+        week.start.getTime() === this.selectedRange.start.getTime() &&
+        week.end.getTime() === this.selectedRange.end.getTime();
+      if (isSelected) {
+        const dayEnd = new Date(week.start);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+        this.$emit('update:selectedRange', { start: week.start, end: dayEnd });
+      } else {
+        this.$emit('update:selectedRange', { start: week.start, end: week.end });
+      }
+    },
+
+    toggleMonthSelection() {
+      const { start, end } = this.monthRange;
+      const isSelected =
+        start.getTime() === this.selectedRange.start.getTime() &&
+        end.getTime() === this.selectedRange.end.getTime();
+      if (isSelected) {
+        const dayEnd = new Date(start);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+        this.$emit('update:selectedRange', { start, end: dayEnd });
+      } else {
+        this.$emit('update:selectedRange', { start, end });
+      }
     },
 
     formatStat(stats: Stats) {
@@ -215,12 +269,14 @@ export default {
     </div>
 
     <div class="calendar">
-      <div v-for="(day, dayIndex) in calendar" :key="dayIndex" @click="$emit('update:selectedDate', day.dayStartTime)"
-        :class="[
+      <div v-for="(day, dayIndex) in calendar" :key="dayIndex"
+        @click="$emit('update:selectedRange', { start: day.dayStartTime, end: day.dayEndTime })" :class="[
           'day-container',
           {
-            // Compare the dates only
-            selected: selectedDate && selectedDate.getTime() === day.dayStartTime.getTime(),
+            'in-range': day.dayStartTime >= selectedRange.start && day.dayStartTime < selectedRange.end,
+            'range-start': day.dayStartTime.getTime() === selectedRange.start.getTime(),
+            'range-end': day.dayEndTime.getTime() === selectedRange.end.getTime(),
+            'shift-highlighted': shiftHighlightedDayIndices.has(dayIndex),
             'has-shift':
               shiftsStore.range(day.dayStartTime, day.dayEndTime).length > 0,
             'has-shift-past':
@@ -253,7 +309,9 @@ export default {
     </select>
 
     <div class="weekly stats" title="Weekly Stats">
-      <span class="stat" v-for="(week, i) in weekStats" :key="i">
+      <span class="stat" v-for="(week, i) in weekStats" :key="i"
+        :class="{ 'selected': weekStats[i] && weekStats[i].start.getTime() === selectedRange.start.getTime() && weekStats[i].end.getTime() === selectedRange.end.getTime() }"
+        @click="toggleWeekSelection(i)">
         {{ formatStat(week.stats) }}
       </span>
     </div>
@@ -273,9 +331,12 @@ export default {
       </div>
     </div>
 
-    <div class="monthly stats" title="Monthly Stats">
+    <div class="monthly stats" title="Monthly Stats" @click="toggleMonthSelection">
       <span class="month-range-label">1st - {{ monthLastDay }}</span>
-      <span class="stat">{{ formatStat(monthStats) }}</span>
+      <span class="stat"
+        :class="{ 'selected': monthRange.start.getTime() === selectedRange.start.getTime() && monthRange.end.getTime() === selectedRange.end.getTime() }">
+        {{ formatStat(monthStats) }}
+      </span>
     </div>
 
     <LoadingOverlay :active="shiftsStore.status === STATUS.Loading" />
@@ -380,8 +441,24 @@ export default {
   border: 1px solid gray;
 }
 
-.selected {
-  border: 1.5px solid light-dark(black, lightgrey) !important;
+.day-container.in-range {
+  border-top: 1.5px solid rgba(74, 144, 217);
+  border-bottom: 1.5px solid rgba(74, 144, 217);
+  border-left-width: 0;
+  border-right-width: 0;
+  background-color: rgba(74, 144, 217, 0.1);
+}
+
+.day-container.range-start {
+  border-left: 1.5px solid rgba(74, 144, 217);
+  border-top-left-radius: var(--border-radius);
+  border-bottom-left-radius: var(--border-radius);
+}
+
+.day-container.range-end {
+  border-right: 1.5px solid rgba(74, 144, 217);
+  border-top-right-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
 }
 
 .weekdays {
@@ -419,6 +496,7 @@ export default {
   grid-area: category;
   border-top-left-radius: var(--border-radius);
   border-top-right-radius: var(--border-radius);
+  cursor: pointer;
 }
 
 .subcategory {
@@ -430,9 +508,6 @@ export default {
   display: grid;
   grid-auto-rows: auto;
   min-width: 8ch;
-  padding: 0 var(--padding-small);
-  background-color: var(--primary-color);
-  color: var(--text-color-black);
 }
 
 .weekly {
@@ -459,10 +534,34 @@ export default {
 }
 
 .stat {
+  padding: 0 var(--padding-small);
+  background-color: var(--primary-color);
+  color: var(--text-color-black);
   display: flex;
   flex-direction: row;
   align-items: center;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.category:hover,
+.stat:hover {
+  opacity: 0.85;
+}
+
+.stat.selected {
+  font-weight: bold;
+}
+
+.week-schedule:has(.selected) .category:not(:hover),
+.week-schedule:has(.selected) .stat:not(.selected):not(:hover),
+.week-schedule:has(.selected) .monthly.stats:not(:hover):not(:has(.selected)) {
+  opacity: 0.7;
+}
+
+.in-range.has-shift::before,
+.shift-highlighted.has-shift::before {
+  background-color: rgba(74, 144, 217, 0.6);
 }
 
 .legend {
@@ -502,7 +601,8 @@ export default {
 
 .selected-icon {
   border-radius: 0;
-  border: 1.5px solid light-dark(black, lightgrey);
+  border: 1.5px solid rgba(74, 144, 217);
+  background-color: rgba(74, 144, 217, 0.1);
 }
 
 .summary {
