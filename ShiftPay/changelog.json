@@ -152,12 +152,11 @@
   },
   {
     "version": "0.4.1",
-    "date": "2026-02-10T00:00:00+1100",
-    "changes": ["[Fix] Incorrect week display when the week starts in the previous month"]
-  },
-  {
-    "version": "0.4.2",
     "date": "2026-03-06T00:00:00+1100",
-    "changes": []
+    "changes": [
+      "[Feature] Add week and month selection for shifts display",
+      "[Fix] Incorrect week display when the week starts in the previous month",
+      "Improve range selection UI"
+    ]
   }
 ]
