@@ -134,8 +134,11 @@ export default {
       <button @click="($refs.clearShiftsDialog as any).showModal()" class="danger" id="clear-btn">Clear</button>
 
       <Transition>
-        <button v-if="selectedRange.start.getTime() === new Date(new Date().setHours(0, 0, 0, 0)).getTime()"
-          @click="handleCheckInOut" id="check-in-out-btn"
+        <button v-if="
+          selectedRange.start.getTime() === new Date().setHours(0, 0, 0, 0) && // Only show the check in/out button if the selected date is today
+          selectedRange.end.getTime() === new Date(new Date().setDate(new Date().getDate() + 1)).setHours(0, 0, 0, 0) &&
+          shiftSessionStore.status !== STATUS.Loading // Don't show the button while loading the shift session
+        " @click="handleCheckInOut" id="check-in-out-btn"
           :class="{ primary: !shiftSessionStore.isInProgress, warning: shiftSessionStore.isInProgress }">
           {{ shiftSessionStore.isInProgress ? 'End' : 'Start' }} Shift
         </button>

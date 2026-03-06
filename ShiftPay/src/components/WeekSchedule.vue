@@ -433,29 +433,36 @@ export default {
 .day-container {
   cursor: pointer;
   border: 0 solid gray;
+  --border-width: 1px;
 }
 
 .day-container:hover,
 .day-container:focus {
-  border: 1px solid gray;
+  outline: 1px dashed darkgrey !important;
+}
+
+.day-container:hover:not(.in-range):not(.shift-highlighted),
+.day-container:focus:not(.in-range):not(.shift-highlighted) {
+  border-radius: var(--border-radius);
 }
 
 .day-container.in-range {
-  border-top: 1.5px solid rgba(74, 144, 217);
-  border-bottom: 1.5px solid rgba(74, 144, 217);
+  border-top: var(--border-width) solid rgba(74, 144, 217);
+  border-bottom: var(--border-width) solid rgba(74, 144, 217);
   border-left-width: 0;
   border-right-width: 0;
   background-color: rgba(74, 144, 217, 0.1);
 }
 
 .day-container.range-start {
-  border-left: 1.5px solid rgba(74, 144, 217);
+  --border-left-width: var(--border-width);
+  border-left: var(--border-left-width) solid rgba(74, 144, 217);
   border-top-left-radius: var(--border-radius);
   border-bottom-left-radius: var(--border-radius);
 }
 
 .day-container.range-end {
-  border-right: 1.5px solid rgba(74, 144, 217);
+  border-right: var(--border-width) solid rgba(74, 144, 217);
   border-top-right-radius: var(--border-radius);
   border-bottom-right-radius: var(--border-radius);
 }
@@ -660,7 +667,8 @@ export default {
 
 .has-shift-past::before {
   left: -50%;
-  --add-left-space: v-bind('spaceBetweenDay');
+  /* CSS border mess with absolute positioning */
+  --add-left-space: calc(v-bind('spaceBetweenDay') - var(--border-left-width, 0px));
 }
 
 .has-shift-future::before {
