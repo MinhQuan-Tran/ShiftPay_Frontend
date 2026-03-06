@@ -319,13 +319,15 @@ export default {
       </optgroup>
     </select>
 
-    <div class="weekly stats" title="Weekly Stats">
-      <span class="stat" v-for="(week, i) in weekStats" :key="i"
-        :class="{ 'selected': weekStats[i] && weekStats[i].start.getTime() === selectedRange.start.getTime() && weekStats[i].end.getTime() === selectedRange.end.getTime() }"
-        @click="toggleWeekSelection(i)">
-        {{ formatStat(week.stats) }}
-      </span>
-    </div>
+    <Transition :name="transitionName" mode="out-in">
+      <div class="weekly stats" title="Weekly Stats" :key="monthChange">
+        <span class="stat" v-for="(week, i) in weekStats" :key="i"
+          :class="{ 'selected': weekStats[i] && weekStats[i].start.getTime() === selectedRange.start.getTime() && weekStats[i].end.getTime() === selectedRange.end.getTime() }"
+          @click="toggleWeekSelection(i)">
+          {{ formatStat(week.stats) }}
+        </span>
+      </div>
+    </Transition>
 
     <div class="legend">
       <div class="legend-item">
