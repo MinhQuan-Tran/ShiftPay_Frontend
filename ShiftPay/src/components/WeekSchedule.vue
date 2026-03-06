@@ -70,7 +70,6 @@ export default {
       // then the first day of the week is 1 December 2023 - 5 days = Sunday 26 November 2023
       // Sunday 26 November 2023 + 1 day = Monday 27 November 2023
       firstDateInCalendar.setDate(firstDateInCalendar.getDate() - dayOfWeek + 1);
-      console.log('firstDateInCalendar (adjusted to Monday):', firstDateInCalendar);
 
       // Set the lastDateInCalendar to the last day of the week (Sunday)
       // e.g. if the last day of the month is on Wednesday 31 January 2024,
