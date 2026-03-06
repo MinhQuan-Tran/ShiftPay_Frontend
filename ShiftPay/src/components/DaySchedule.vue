@@ -1,7 +1,7 @@
 <script lang="ts">
 import Shift from '@/models/Shift';
 import { currencyFormat, toTimeStr } from '@/utils';
-import { STATUS } from '@/types';
+import { STATUS, type DateRange } from '@/types';
 
 import { mapStores } from 'pinia';
 import { useShiftsStore } from '@/stores/shiftsStore';
@@ -15,9 +15,9 @@ import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 export default {
   props: {
-    selectedDate: {
-      type: Date,
-      required: true
+    selectedRange: {
+      type: Object as () => DateRange,
+      required: true as const
     }
   },
 
@@ -96,8 +96,8 @@ export default {
         action: 'add',
         placeholderShift: {
           // Set the startTime and endTime time to the selected date with the current time
-          startTime: new Date(new Date(this.selectedDate).setHours(new Date().getHours(), new Date().getMinutes())),
-          endTime: new Date(new Date(this.selectedDate).setHours(new Date().getHours(), new Date().getMinutes()))
+          startTime: new Date(new Date(this.selectedRange.start).setHours(new Date().getHours(), new Date().getMinutes())),
+          endTime: new Date(new Date(this.selectedRange.start).setHours(new Date().getHours(), new Date().getMinutes()))
         }
       };
       (this.$refs.shiftDialog as any).showModal();
@@ -134,8 +134,11 @@ export default {
       <button @click="($refs.clearShiftsDialog as any).showModal()" class="danger" id="clear-btn">Clear</button>
 
       <Transition>
-        <button v-if="selectedDate.setHours(0, 0, 0, 0) == new Date().setHours(0, 0, 0, 0)" @click="handleCheckInOut"
-          id="check-in-out-btn"
+        <button v-if="
+          selectedRange.start.getTime() === new Date().setHours(0, 0, 0, 0) && // Only show the check in/out button if the selected date is today
+          selectedRange.end.getTime() === new Date(new Date().setDate(new Date().getDate() + 1)).setHours(0, 0, 0, 0) &&
+          shiftSessionStore.status !== STATUS.Loading // Don't show the button while loading the shift session
+        " @click="handleCheckInOut" id="check-in-out-btn"
           :class="{ primary: !shiftSessionStore.isInProgress, warning: shiftSessionStore.isInProgress }">
           {{ shiftSessionStore.isInProgress ? 'End' : 'Start' }} Shift
         </button>
@@ -145,18 +148,20 @@ export default {
     </div>
 
     <div class="shift-list">
-      <DayScheduleShift v-for="shift in shiftsStore.day(selectedDate).sort((a, b) => {
+      <DayScheduleShift v-for="shift in shiftsStore.range(selectedRange.start, selectedRange.end).sort((a, b) => {
         // Sort by startTime, then by endTime
         return a.startTime.getTime() - b.startTime.getTime() || a.endTime.getTime() - b.endTime.getTime();
-      })" :key="shift.id" :shift="(shift as Shift)" :selected-date="selectedDate" @edit-shift="handleEditShift" />
+      })" :key="shift.id" :shift="(shift as Shift)" :selected-date="selectedRange.start"
+        @edit-shift="handleEditShift" />
     </div>
 
     <BaseDialog ref="clearShiftsDialog" title="Clear Shifts" open-dialog-text="Clear" :reset-forms="true">
-      <ClearShiftsForm :selected-date="selectedDate" />
+      <ClearShiftsForm :selected-date="selectedRange.start" />
     </BaseDialog>
 
     <BaseDialog ref="shiftDialog" :title="shiftFormData.title" :reset-forms="shiftFormData.resetForm">
-      <ShiftForm :selected-date="selectedDate" :shift="shiftFormData.placeholderShift" :action="shiftFormData.action" />
+      <ShiftForm :selected-date="selectedRange.start" :shift="shiftFormData.placeholderShift"
+        :action="shiftFormData.action" />
     </BaseDialog>
 
     <LoadingOverlay :active="shiftsStore.status === STATUS.Loading" />

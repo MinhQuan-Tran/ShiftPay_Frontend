@@ -392,10 +392,14 @@ export default {
   background-color: var(--background-color);
 }
 
+.dropzone>* {
+  background-color: transparent;
+}
+
 .dropzone:hover,
 .dropzone.dragging {
   border-color: var(--accent-color, #4a90d9);
-  background-color: rgba(74, 144, 217, 0.05);
+  --background-color: rgba(74, 144, 217, 0.05);
 }
 
 .dropzone-icon {

@@ -1,7 +1,7 @@
 <script lang="ts">
 import api, { initBeforeUnloadWarning } from '@/api';
 import Shift from '@/models/Shift';
-import { STATUS } from './types';
+import { STATUS, type DateRange } from './types';
 
 import { mapStores } from 'pinia';
 import { useAuthStore } from './stores/authStore';
@@ -19,8 +19,11 @@ import ChangelogDialog from '@/components/ChangelogDialog.vue';
 
 export default {
   data() {
+    const start = new Date(new Date().setHours(0, 0, 0, 0));
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
     return {
-      selectedDate: new Date(new Date().setHours(0, 0, 0, 0)),
+      selectedRange: { start, end } as DateRange,
       menuOpened: false
     };
   },
@@ -130,9 +133,9 @@ export default {
   <SyncDataDialog ref="sync-dialog" @complete="handleSyncComplete" />
   <ImportDataDialog ref="import-dialog" />
 
-  <WeekSchedule v-model:selected-date="selectedDate" />
+  <WeekSchedule v-model:selected-range="selectedRange" />
   <hr />
-  <DaySchedule :selected-date="selectedDate" />
+  <DaySchedule :selected-range="selectedRange" />
 
   <ChangelogDialog ref="changelog-dialog" />
 </template>

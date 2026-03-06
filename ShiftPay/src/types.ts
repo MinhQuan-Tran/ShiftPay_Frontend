@@ -30,6 +30,11 @@ export type Day = {
   nextMonth: boolean; // Is this the day from the next month?
 };
 
+export type DateRange = {
+  start: Date;
+  end: Date;
+};
+
 export const STATUS = { Ready: 'Ready', Loading: 'Loading', Error: 'Error' } as const;
 export type Status = (typeof STATUS)[keyof typeof STATUS];
 
