@@ -117,6 +117,10 @@ export default {
     selectedRange: {
       type: Object as () => DateRange,
       required: true as const
+    },
+    showLegends: {
+      type: Boolean,
+      default: true
     }
   },
 
@@ -364,9 +368,33 @@ export default {
         <span class="empty-shifts-detail">{{ emptyShiftMessage || 'The schedule is basically on snack break.' }}</span>
       </p>
 
+      <div v-if="selectedShifts.length > 0 && showLegends" class="icon-legend">
+        <span class="legend-item" title="Income">
+          <img width="48" height="48" src="https://img.icons8.com/fluency/48/cash--v1.png" alt="cash"
+            class="inline-icon" />
+          Income
+        </span>
+        <span class="legend-item" title="Billable Duration">
+          <img width="48" height="48" src="https://img.icons8.com/fluency/48/time-card.png" alt="time-card"
+            class="inline-icon" />
+          Billable Duration
+        </span>
+        <span class="legend-item" title="Unpaid Breaks">
+          <img width="48" height="48" src="https://img.icons8.com/fluency/48/tea.png" alt="tea" class="inline-icon" />
+          Unpaid Breaks
+        </span>
+        <span class="legend-item" title="Shift Duration">
+          <img width="48" height="48" src="https://img.icons8.com/fluency/48/clock.png" alt="clock"
+            class="inline-icon" />
+          Shift Duration
+        </span>
+      </div>
+
       <DayScheduleShiftCard v-for="shift in selectedShifts" :key="shift.id" :shift="(shift as Shift)"
         :selected-date="selectedRange.start" @edit-shift="handleEditShift" />
     </div>
+
+
 
     <BaseDialog ref="clearShiftsDialog" title="Clear Shifts" open-dialog-text="Clear" :reset-forms="true">
       <ClearShiftsForm :selected-date="selectedRange.start" />
@@ -453,5 +481,21 @@ export default {
   font-weight: bold;
   color: var(--text-color);
   margin-bottom: var(--padding-small);
+}
+
+.icon-legend {
+  align-self: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--padding);
+  justify-content: flex-start;
+  color: var(--text-color-faded);
+  font-size: smaller;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.1em;
 }
 </style>

@@ -4,7 +4,14 @@ import { mapStores } from 'pinia';
 import { useAuthStore } from '@/stores/authStore';
 
 export default {
-  emits: ['login', 'import', 'tutorial', 'changelog'],
+  props: {
+    showLegends: {
+      type: Boolean,
+      required: true
+    }
+  },
+
+  emits: ['login', 'import', 'tutorial', 'changelog', 'toggle-legends'],
 
   computed: {
     ...mapStores(useAuthStore),
@@ -67,6 +74,14 @@ export default {
       </span>
       <span class="menu-label">Logout</span>
       <span v-if="isSyncPending" class="menu-badge">Sync first</span>
+    </button>
+
+    <hr class="menu-divider" />
+
+    <span class="menu-heading">Display</span>
+    <button class="menu-item" @click="$emit('toggle-legends')">
+      <span class="menu-icon">{{ showLegends ? '👁' : '🚫' }}</span>
+      <span class="menu-label">{{ showLegends ? 'Hide' : 'Show' }} Legends</span>
     </button>
 
     <hr class="menu-divider" />
