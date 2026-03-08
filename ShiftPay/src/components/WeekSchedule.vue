@@ -264,11 +264,11 @@ export default {
       <b>{{ title ?? 'Week Schedule' }}</b>
 
       <div class="actions">
-        <button class="prev-btn" @click="goToPrevMonth">
-          <img src="/arrow.svg" alt="prev" />
+        <button class="prev-btn" @click="goToPrevMonth" aria-label="Previous month">
+          <img src="/arrow.svg" alt="Previous month" />
         </button>
-        <button class="next-btn" @click="goToNextMonth">
-          <img src="/arrow.svg" alt="next" />
+        <button class="next-btn" @click="goToNextMonth" aria-label="Next month">
+          <img src="/arrow.svg" alt="Next month" />
         </button>
       </div>
     </div>

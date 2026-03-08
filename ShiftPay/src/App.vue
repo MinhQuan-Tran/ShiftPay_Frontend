@@ -146,7 +146,7 @@ export default {
   <div class="header">
     <div class="brand">
       <img src="/logo.png" alt="ShiftPay logo" class="logo" />
-      <b>ShiftPay</b>
+      <h1 class="app-title">ShiftPay</h1>
     </div>
     <div class="menu-btn" @click="menuOpened = !menuOpened" :class="{ open: menuOpened }">
       <div class="bar"></div>
@@ -215,12 +215,9 @@ export default {
   height: 32px;
 }
 
-.brand .shift {
-  color: var(--primary-color);
-}
-
-.brand .pay {
-  color: rgb(0, 255, 0);
+.app-title {
+  font-size: 1.5rem;
+  color: light-dark(#121212, #f4f4f4);
 }
 
 .menu-btn {
