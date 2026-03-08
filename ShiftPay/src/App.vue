@@ -121,7 +121,10 @@ export default {
 
 <template>
   <div class="header">
-    <h1>ShiftPay</h1>
+    <div class="brand">
+      <img src="/logo.png" alt="ShiftPay logo" class="logo" />
+      <b>ShiftPay</b>
+    </div>
     <div class="menu-btn" @click="menuOpened = !menuOpened" :class="{ open: menuOpened }">
       <div class="bar"></div>
       <div class="bar"></div>
@@ -148,9 +151,29 @@ export default {
   align-items: center;
 }
 
-.menu-btn {
-  width: 40px;
+.brand {
+  position: relative;
   height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo {
+  height: 32px;
+}
+
+.brand .shift {
+  color: var(--primary-color);
+}
+
+.brand .pay {
+  color: rgb(0, 255, 0);
+}
+
+.menu-btn {
+  width: 32px;
+  height: 32px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
