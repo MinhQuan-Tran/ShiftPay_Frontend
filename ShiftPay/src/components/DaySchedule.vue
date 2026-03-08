@@ -129,7 +129,7 @@ export default {
 </script>
 
 <template>
-  <div class="day-schedule">
+  <div class="day-schedule" id="day-schedule">
     <div class="actions">
       <button @click="($refs.clearShiftsDialog as any).showModal()" class="danger" id="clear-btn">Clear</button>
 
@@ -147,7 +147,7 @@ export default {
       <button @click="handleAddShift" class="success" id="add-btn">Add Shift</button>
     </div>
 
-    <div class="shift-list">
+    <div class="shift-list" id="shift-list">
       <DayScheduleShift v-for="shift in shiftsStore.range(selectedRange.start, selectedRange.end).sort((a, b) => {
         // Sort by startTime, then by endTime
         return a.startTime.getTime() - b.startTime.getTime() || a.endTime.getTime() - b.endTime.getTime();

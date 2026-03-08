@@ -259,7 +259,7 @@ export default {
 </script>
 
 <template>
-  <div class="week-schedule">
+  <div class="week-schedule" id="week-schedule">
     <div class="month-nav">
       <b>{{ title ?? 'Week Schedule' }}</b>
 
@@ -573,7 +573,8 @@ export default {
 }
 
 .category:hover,
-.stat:hover {
+.stat:hover,
+.monthly:hover {
   opacity: 0.85;
 }
 

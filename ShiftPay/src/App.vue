@@ -3,6 +3,8 @@ import api, { initBeforeUnloadWarning } from '@/api';
 import Shift from '@/models/Shift';
 import { STATUS, type DateRange } from './types';
 
+import packageJson from '@/../package.json';
+
 import { mapStores } from 'pinia';
 import { useAuthStore } from './stores/authStore';
 import { useShiftsStore } from '@/stores/shiftsStore';
@@ -16,6 +18,7 @@ import DaySchedule from '@/components/DaySchedule.vue';
 import SyncDataDialog from '@/components/SyncDataDialog.vue';
 import ImportDataDialog from '@/components/ImportDataDialog.vue';
 import ChangelogDialog from '@/components/ChangelogDialog.vue';
+import TutorialOverlay from '@/components/TutorialOverlay.vue';
 
 export default {
   data() {
@@ -44,6 +47,11 @@ export default {
       this.workInfosStore.fetch();
       this.shiftTemplatesStore.fetch();
     },
+    startTutorial() {
+      this.menuOpened = false;
+      (this.$refs.tutorial as any).start();
+    },
+
     async handleLogin() {
       // Close the menu first
       this.menuOpened = false;
@@ -84,7 +92,8 @@ export default {
     DaySchedule,
     SyncDataDialog,
     ImportDataDialog,
-    ChangelogDialog
+    ChangelogDialog,
+    TutorialOverlay
   },
 
   async mounted() {
@@ -100,8 +109,13 @@ export default {
     this.workInfosStore.fetch();
     this.shiftSessionStore.fetch();
 
-    // Show changelog if app version is different
-    (this.$refs['changelog-dialog'] as any).checkAndShow();
+    // Show changelog if app version is different (skip if tutorial not completed)
+    if (localStorage.getItem('tutorialCompleted') === 'true') {
+      (this.$refs['changelog-dialog'] as any).checkAndShow();
+    } else {
+      // If tutorial not completed, set current version to avoid showing changelog on first run
+      localStorage.setItem('appVersion', packageJson.version);
+    }
 
     // Show sync dialog if user previously clicked "Decide Later"
     if (this.authStore.isAuthenticated && localStorage.getItem('syncPending') === 'true') {
@@ -115,6 +129,11 @@ export default {
 
     // Warn user before leaving if there are pending API writes
     initBeforeUnloadWarning();
+
+    // Auto-start tutorial for first-time visitors
+    if (localStorage.getItem('tutorialCompleted') !== 'true') {
+      this.$nextTick(() => this.startTutorial());
+    }
   }
 };
 </script>
@@ -129,7 +148,7 @@ export default {
       <div class="bar"></div>
       <div class="bar"></div>
       <div class="bar"></div>
-      <MainMenu v-if="menuOpened" @login="handleLogin" @import="showImportDialog"></MainMenu>
+      <MainMenu v-if="menuOpened" @login="handleLogin" @import="showImportDialog" @tutorial="startTutorial"></MainMenu>
     </div>
   </div>
 
@@ -141,6 +160,7 @@ export default {
   <DaySchedule :selected-range="selectedRange" />
 
   <ChangelogDialog ref="changelog-dialog" />
+  <TutorialOverlay ref="tutorial" />
 </template>
 
 <style scoped>

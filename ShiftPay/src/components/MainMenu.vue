@@ -4,7 +4,7 @@ import { mapStores } from 'pinia';
 import { useAuthStore } from '@/stores/authStore';
 
 export default {
-  emits: ['login', 'import'],
+  emits: ['login', 'import', 'tutorial'],
 
   computed: {
     ...mapStores(useAuthStore),
@@ -54,7 +54,7 @@ export default {
     <hr class="menu-divider" />
 
     <span class="menu-heading">Account</span>
-    <button v-if="!authStore.isAuthenticated" class="menu-item" @click="handleLogin">
+    <button v-if="!authStore.isAuthenticated" id="menu-login-btn" class="menu-item" @click="handleLogin">
       <span class="menu-icon">
         <img class="inline-icon" src="https://img.icons8.com/fluency/96/enter-2.png" alt="login" />
       </span>
@@ -67,6 +67,14 @@ export default {
       </span>
       <span class="menu-label">Logout</span>
       <span v-if="isSyncPending" class="menu-badge">Sync first</span>
+    </button>
+
+    <hr class="menu-divider" />
+
+    <span class="menu-heading">Help</span>
+    <button id="menu-tutorial-btn" class="menu-item" @click="$emit('tutorial')">
+      <span class="menu-icon">❓</span>
+      <span class="menu-label">Tutorial</span>
     </button>
   </div>
 </template>
