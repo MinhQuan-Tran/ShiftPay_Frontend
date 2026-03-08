@@ -12,6 +12,10 @@ export default {
     selectedRange: {
       type: Object as () => DateRange,
       required: true as const
+    },
+    showLegends: {
+      type: Boolean,
+      default: true
     }
   },
 
@@ -329,7 +333,7 @@ export default {
       </div>
     </Transition>
 
-    <div class="legend">
+    <div v-if="showLegends" class="legend">
       <div class="legend-item">
         <span class="legend-icon today-icon"></span>
         <span>Today</span>

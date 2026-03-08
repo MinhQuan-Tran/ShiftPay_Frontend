@@ -27,7 +27,8 @@ export default {
     end.setDate(end.getDate() + 1);
     return {
       selectedRange: { start, end } as DateRange,
-      menuOpened: false
+      menuOpened: false,
+      showLegends: localStorage.getItem('showLegends') !== 'false'
     };
   },
 
@@ -54,6 +55,11 @@ export default {
     startTutorial() {
       this.menuOpened = false;
       (this.$refs.tutorial as any).start();
+    },
+
+    toggleLegends() {
+      this.showLegends = !this.showLegends;
+      localStorage.setItem('showLegends', String(this.showLegends));
     },
 
     async handleLogin() {
@@ -152,17 +158,17 @@ export default {
       <div class="bar"></div>
       <div class="bar"></div>
       <div class="bar"></div>
-      <MainMenu v-if="menuOpened" @login="handleLogin" @import="showImportDialog" @tutorial="startTutorial"
-        @changelog="showChangelogDialog"></MainMenu>
+      <MainMenu v-if="menuOpened" :show-legends="showLegends" @login="handleLogin" @import="showImportDialog" @tutorial="startTutorial"
+        @changelog="showChangelogDialog" @toggle-legends="toggleLegends"></MainMenu>
     </div>
   </div>
 
   <SyncDataDialog ref="sync-dialog" @complete="handleSyncComplete" />
   <ImportDataDialog ref="import-dialog" />
 
-  <WeekSchedule v-model:selected-range="selectedRange" />
+  <WeekSchedule v-model:selected-range="selectedRange" :show-legends="showLegends" />
   <hr />
-  <DaySchedule :selected-range="selectedRange" />
+  <DaySchedule :selected-range="selectedRange" :show-legends="showLegends" />
 
   <ChangelogDialog ref="changelog-dialog" />
   <TutorialOverlay ref="tutorial" />
