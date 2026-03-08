@@ -9,7 +9,7 @@
 
   --background-color: light-dark(#fafafa, #272727);
   --popup-background-color: light-dark(#fff, #303030);
-  --input-background-color: light-dark(#f0f0f0, #414141);
+  --input-background-color: light-dark(#e6e6e6, #414141);
   --button-color: light-dark(#ededed, #545454);
   --text-color-white: #fff;
   --text-color-black: #000;
@@ -68,6 +68,7 @@ button:focus {
 }
 
 button {
+  position: relative;
   border: none;
   outline: none;
   cursor: pointer;

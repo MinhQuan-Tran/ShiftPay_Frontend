@@ -551,7 +551,7 @@ form {
   overflow-x: auto;
   white-space: nowrap;
   gap: 0.5em;
-  padding: 0.15em 0;
+  padding: 0.20em;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -564,8 +564,14 @@ form {
 }
 
 .template-chip--delete {
-  outline: 1.5px dashed var(--danger-color);
+  outline: 2px dashed var(--danger-color);
   outline-offset: -1.5px;
+}
+
+.template-chip--delete:hover {
+  outline: 2px solid var(--danger-color);
+  background: var(--danger-color);
+  opacity: 1;
 }
 
 .template-chip--add {

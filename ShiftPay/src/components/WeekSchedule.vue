@@ -25,6 +25,7 @@ export default {
       weekDays: ['M.', 'Tu.', 'W.', 'Th.', 'F', 'Sa.', 'Su.'],
       today,
       monthChange: 0,
+      slideDirection: 1 as 1 | -1,
       spaceBetweenDay: '0px',
       // type as the union of all subcategory keys across STAT_OPTIONS
       selectedSubCategoryOption: 'beforeTax' as { [K in keyof typeof STAT_OPTIONS]: keyof (typeof STAT_OPTIONS)[K] }[keyof typeof STAT_OPTIONS],
@@ -145,6 +146,10 @@ export default {
       return `${lastDay}${suffix}`;
     },
 
+    transitionName(): string {
+      return this.slideDirection === 1 ? 'slide-next' : 'slide-prev';
+    },
+
     // Days outside the selected range that have shifts spanning into the selected range
     shiftHighlightedDayIndices(): Set<number> {
       const { start, end } = this.selectedRange;
@@ -170,10 +175,12 @@ export default {
 
   methods: {
     goToNextMonth() {
+      this.slideDirection = 1;
       this.monthChange++;
     },
 
     goToPrevMonth() {
+      this.slideDirection = -1;
       this.monthChange--;
     },
 
@@ -252,52 +259,57 @@ export default {
 </script>
 
 <template>
-  <div class="week-schedule">
+  <div class="week-schedule" id="week-schedule">
     <div class="month-nav">
-      <button class="prev-btn" @click="goToPrevMonth">
-        <img src="@/components/icons/next.svg" alt="prev" />
-      </button>
       <b>{{ title ?? 'Week Schedule' }}</b>
-      <button class="next-btn" @click="goToNextMonth">
-        <img src="@/components/icons/next.svg" alt="next" />
-      </button>
+
+      <div class="actions">
+        <button class="prev-btn" @click="goToPrevMonth" aria-label="Previous month">
+          <img src="/arrow.svg" alt="Previous month" />
+        </button>
+        <button class="next-btn" @click="goToNextMonth" aria-label="Next month">
+          <img src="/arrow.svg" alt="Next month" />
+        </button>
+      </div>
     </div>
 
     <div class="weekdays">
       <div class="week-day" v-for="day in weekDays" :key="day">{{ day }}</div>
     </div>
 
-    <div class="calendar">
-      <div v-for="(day, dayIndex) in calendar" :key="dayIndex"
-        @click="$emit('update:selectedRange', { start: day.dayStartTime, end: day.dayEndTime })" :class="[
-          'day-container',
-          {
-            'in-range': day.dayStartTime >= selectedRange.start && day.dayStartTime < selectedRange.end,
-            'range-start': day.dayStartTime.getTime() === selectedRange.start.getTime(),
-            'range-end': day.dayEndTime.getTime() === selectedRange.end.getTime(),
-            'shift-highlighted': shiftHighlightedDayIndices.has(dayIndex),
-            'has-shift':
-              shiftsStore.range(day.dayStartTime, day.dayEndTime).length > 0,
-            'has-shift-past':
-              shiftsStore.range(day.dayStartTime, day.dayEndTime)
-                .some((shift) => new Date(shift.startTime) < day.dayStartTime),
-            'has-shift-future':
-              shiftsStore.range(day.dayStartTime, day.dayEndTime)
-                .some((shift) => day.dayEndTime < new Date(shift.endTime))
-          }
-        ]">
-        <div :class="[
-          'day',
-          {
-            today: day.dayStartTime.getTime() === new Date(new Date().setHours(0, 0, 0, 0)).getTime(),
-            'prev-month': day.prevMonth,
-            'next-month': day.nextMonth
-          }
-        ]">
-          {{ day.dayStartTime.getDate() }}
+    <Transition :name="transitionName" mode="out-in">
+      <div class="calendar" :key="monthChange">
+        <div v-for="(day, dayIndex) in calendar" :key="dayIndex"
+          @click="$emit('update:selectedRange', { start: day.dayStartTime, end: day.dayEndTime })" :class="[
+            'day-container',
+            {
+              'in-range': day.dayStartTime >= selectedRange.start && day.dayStartTime < selectedRange.end,
+              'range-start': day.dayStartTime.getTime() === selectedRange.start.getTime(),
+              'range-end': day.dayEndTime.getTime() === selectedRange.end.getTime(),
+              'shift-highlighted': shiftHighlightedDayIndices.has(dayIndex),
+              'has-shift':
+                shiftsStore.range(day.dayStartTime, day.dayEndTime).length > 0,
+              'has-shift-past':
+                shiftsStore.range(day.dayStartTime, day.dayEndTime)
+                  .some((shift) => new Date(shift.startTime) < day.dayStartTime),
+              'has-shift-future':
+                shiftsStore.range(day.dayStartTime, day.dayEndTime)
+                  .some((shift) => day.dayEndTime < new Date(shift.endTime))
+            }
+          ]">
+          <div :class="[
+            'day',
+            {
+              today: day.dayStartTime.getTime() === new Date(new Date().setHours(0, 0, 0, 0)).getTime(),
+              'prev-month': day.prevMonth,
+              'next-month': day.nextMonth
+            }
+          ]">
+            {{ day.dayStartTime.getDate() }}
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <select v-model="selectedSubCategoryOption" class="category">
       <optgroup v-for="(subCategory, category) in STAT_OPTIONS" :key="category" :label="category">
@@ -307,13 +319,15 @@ export default {
       </optgroup>
     </select>
 
-    <div class="weekly stats" title="Weekly Stats">
-      <span class="stat" v-for="(week, i) in weekStats" :key="i"
-        :class="{ 'selected': weekStats[i] && weekStats[i].start.getTime() === selectedRange.start.getTime() && weekStats[i].end.getTime() === selectedRange.end.getTime() }"
-        @click="toggleWeekSelection(i)">
-        {{ formatStat(week.stats) }}
-      </span>
-    </div>
+    <Transition :name="transitionName" mode="out-in">
+      <div class="weekly stats" title="Weekly Stats" :key="monthChange">
+        <span class="stat" v-for="(week, i) in weekStats" :key="i"
+          :class="{ 'selected': weekStats[i] && weekStats[i].start.getTime() === selectedRange.start.getTime() && weekStats[i].end.getTime() === selectedRange.end.getTime() }"
+          @click="toggleWeekSelection(i)">
+          {{ formatStat(week.stats) }}
+        </span>
+      </div>
+    </Transition>
 
     <div class="legend">
       <div class="legend-item">
@@ -361,10 +375,17 @@ export default {
   grid-area: month-nav;
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
   font-size: larger;
   margin: 0.5rem 0 1rem 0;
+}
+
+.month-nav .actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .prev-btn,
@@ -532,6 +553,7 @@ export default {
   border-bottom-left-radius: var(--border-radius);
   border-bottom-right-radius: var(--border-radius);
   min-width: 8ch;
+  cursor: pointer;
 }
 
 .month-range-label {
@@ -551,7 +573,8 @@ export default {
 }
 
 .category:hover,
-.stat:hover {
+.stat:hover,
+.monthly:hover {
   opacity: 0.85;
 }
 
@@ -673,5 +696,36 @@ export default {
 
 .has-shift-future::before {
   --add-right-space: v-bind('spaceBetweenDay');
+}
+
+/* Month change slide + fade transitions */
+.slide-next-enter-active,
+.slide-prev-enter-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.slide-next-leave-active,
+.slide-prev-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.slide-next-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.slide-next-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.slide-prev-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.slide-prev-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
 }
 </style>

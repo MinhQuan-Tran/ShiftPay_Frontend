@@ -3,6 +3,8 @@ import api, { initBeforeUnloadWarning } from '@/api';
 import Shift from '@/models/Shift';
 import { STATUS, type DateRange } from './types';
 
+import packageJson from '@/../package.json';
+
 import { mapStores } from 'pinia';
 import { useAuthStore } from './stores/authStore';
 import { useShiftsStore } from '@/stores/shiftsStore';
@@ -16,6 +18,7 @@ import DaySchedule from '@/components/DaySchedule.vue';
 import SyncDataDialog from '@/components/SyncDataDialog.vue';
 import ImportDataDialog from '@/components/ImportDataDialog.vue';
 import ChangelogDialog from '@/components/ChangelogDialog.vue';
+import TutorialOverlay from '@/components/TutorialOverlay.vue';
 
 export default {
   data() {
@@ -37,6 +40,10 @@ export default {
       this.menuOpened = false;
       (this.$refs['import-dialog'] as any).showModal();
     },
+    showChangelogDialog() {
+      this.menuOpened = false;
+      (this.$refs['changelog-dialog'] as any).showFullHistory();
+    },
     handleSyncComplete() {
       // Clear the pending flag so stores fetch from server
       localStorage.removeItem('syncPending');
@@ -44,6 +51,11 @@ export default {
       this.workInfosStore.fetch();
       this.shiftTemplatesStore.fetch();
     },
+    startTutorial() {
+      this.menuOpened = false;
+      (this.$refs.tutorial as any).start();
+    },
+
     async handleLogin() {
       // Close the menu first
       this.menuOpened = false;
@@ -84,7 +96,8 @@ export default {
     DaySchedule,
     SyncDataDialog,
     ImportDataDialog,
-    ChangelogDialog
+    ChangelogDialog,
+    TutorialOverlay
   },
 
   async mounted() {
@@ -100,8 +113,13 @@ export default {
     this.workInfosStore.fetch();
     this.shiftSessionStore.fetch();
 
-    // Show changelog if app version is different
-    (this.$refs['changelog-dialog'] as any).checkAndShow();
+    // Show changelog if app version is different (skip if tutorial not completed)
+    if (localStorage.getItem('tutorialCompleted') === 'true') {
+      (this.$refs['changelog-dialog'] as any).checkAndShow();
+    } else {
+      // If tutorial not completed, set current version to avoid showing changelog on first run
+      localStorage.setItem('appVersion', packageJson.version);
+    }
 
     // Show sync dialog if user previously clicked "Decide Later"
     if (this.authStore.isAuthenticated && localStorage.getItem('syncPending') === 'true') {
@@ -115,18 +133,27 @@ export default {
 
     // Warn user before leaving if there are pending API writes
     initBeforeUnloadWarning();
+
+    // Auto-start tutorial for first-time visitors
+    if (localStorage.getItem('tutorialCompleted') !== 'true') {
+      this.$nextTick(() => this.startTutorial());
+    }
   }
 };
 </script>
 
 <template>
   <div class="header">
-    <h1>ShiftPay</h1>
+    <div class="brand">
+      <img src="/logo.png" alt="ShiftPay logo" class="logo" />
+      <h1 class="app-title">ShiftPay</h1>
+    </div>
     <div class="menu-btn" @click="menuOpened = !menuOpened" :class="{ open: menuOpened }">
       <div class="bar"></div>
       <div class="bar"></div>
       <div class="bar"></div>
-      <MainMenu v-if="menuOpened" @login="handleLogin" @import="showImportDialog"></MainMenu>
+      <MainMenu v-if="menuOpened" @login="handleLogin" @import="showImportDialog" @tutorial="startTutorial"
+        @changelog="showChangelogDialog"></MainMenu>
     </div>
   </div>
 
@@ -138,29 +165,75 @@ export default {
   <DaySchedule :selected-range="selectedRange" />
 
   <ChangelogDialog ref="changelog-dialog" />
+  <TutorialOverlay ref="tutorial" />
 </template>
 
 <style scoped>
 .header {
+  position: sticky;
+  top: 12px;
+  margin-bottom: 12px;
+  z-index: 1;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  height: 24px;
+  padding: var(--padding) calc(var(--padding) * 2);
+  font-size: 1.25rem;
+  background: transparent;
+  box-shadow: 0 10px 10px rgba(0, 0, 0, 0.15);
+  border-radius: 40px;
+  isolation: isolate;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: light-dark(rgba(255, 255, 255, 0.55), rgba(18, 18, 18, 0.45));
+  border: 1px solid light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.22));
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.header>* {
+  position: relative;
+  z-index: 1;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo {
+  height: 32px;
+}
+
+.app-title {
+  font-size: 1.5rem;
+  color: light-dark(#121212, #f4f4f4);
 }
 
 .menu-btn {
-  width: 40px;
-  height: 40px;
+  width: 24px;
+  height: 24px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   cursor: pointer;
   position: relative;
+  background: transparent;
 }
 
 .menu-btn .bar {
   width: 100%;
-  height: 4px;
+  height: 3.5px;
   background-color: light-dark(#121212, #f4f4f4);
   border-radius: 2px;
   transition: all 0.3s ease;

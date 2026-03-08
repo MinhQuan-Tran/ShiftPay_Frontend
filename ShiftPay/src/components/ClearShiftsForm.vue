@@ -259,10 +259,10 @@ export default {
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: var(--border-radius);
-  background-color: var(--input-background-color);
+  background-color: light-dark(rgba(255, 255, 255, 0.55), rgba(24, 24, 24, 0.75)) !important;
   cursor: pointer;
   transition: outline 0.15s ease;
-  outline: 2px solid transparent;
+  outline: 2px solid var(--input-background-color);
 }
 
 .option-card:hover {
@@ -344,7 +344,7 @@ export default {
   gap: 0.25rem 0.5rem;
   padding: 0.4rem 0.5rem;
   border-radius: var(--border-radius);
-  background-color: var(--background-color);
+  background-color: light-dark(rgba(255, 255, 255, 0.55), rgba(24, 24, 24, 0.75)) !important;
   font-size: 0.85rem;
 }
 

@@ -77,7 +77,7 @@ export default {
   </div>
 </template>
 
-<style scoped>
+<style>
 .combo-box {
   position: relative;
   border-radius: var(--border-radius);
