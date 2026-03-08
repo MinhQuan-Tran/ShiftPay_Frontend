@@ -182,6 +182,7 @@ export default {
       tooltipStyle: {} as Record<string, string>,
       resizeObserver: null as ResizeObserver | null,
       pollTimer: null as ReturnType<typeof setInterval> | null,
+      advanceTimer: null as ReturnType<typeof setTimeout> | null,
       eventCleanup: null as (() => void) | null,
       dialogCloseCleanup: null as (() => void) | null,
       tooltipTeleportTarget: 'body' as string | Element
@@ -195,10 +196,6 @@ export default {
 
     currentStep(): TutorialStep {
       return this.steps[this.currentStepIndex];
-    },
-
-    isFirstClosingStepIndex(): number {
-      return this.steps.findIndex((s) => s.type === 'closing');
     },
 
     isCenterOverlay(): boolean {
@@ -294,6 +291,10 @@ export default {
           const dialog = elements[0].closest('dialog');
           if (dialog) {
             this.tooltipTeleportTarget = dialog;
+            // backdrop-filter on the dialog creates a containing block,
+            // making position:fixed act like position:absolute. Allow the
+            // tooltip to overflow the dialog bounds so it isn't clipped.
+            dialog.style.overflow = 'visible';
             this.watchDialogClose(dialog);
           }
         }
@@ -366,6 +367,18 @@ export default {
       const vh = window.innerHeight;
       const tooltipW = 300;
 
+      // When teleported inside a dialog with backdrop-filter, position:fixed
+      // behaves like position:absolute relative to the dialog.
+      // Offset coordinates from viewport-space to dialog-space.
+      let ox = 0, oy = 0, cw = vw, ch = vh;
+      if (step.inDialog && this.tooltipTeleportTarget instanceof HTMLElement) {
+        const dr = this.tooltipTeleportTarget.getBoundingClientRect();
+        ox = dr.left;
+        oy = dr.top;
+        cw = dr.width;
+        ch = dr.height;
+      }
+
       // Calculate available space
       const spaceAbove = rect.top;
       const spaceBelow = vh - rect.bottom;
@@ -383,20 +396,20 @@ export default {
 
       switch (pos) {
         case 'top':
-          style.bottom = `${vh - rect.top + pad}px`;
-          style.left = `${clampX(rect.left + rect.width / 2 - tooltipW / 2)}px`;
+          style.bottom = `${ch - rect.top + oy + pad}px`;
+          style.left = `${clampX(rect.left + rect.width / 2 - tooltipW / 2) - ox}px`;
           break;
         case 'bottom':
-          style.top = `${rect.bottom + pad}px`;
-          style.left = `${clampX(rect.left + rect.width / 2 - tooltipW / 2)}px`;
+          style.top = `${rect.bottom + pad - oy}px`;
+          style.left = `${clampX(rect.left + rect.width / 2 - tooltipW / 2) - ox}px`;
           break;
         case 'left':
-          style.top = `${rect.top + rect.height / 2 - 60}px`;
-          style.right = `${vw - rect.left + pad}px`;
+          style.top = `${rect.top + rect.height / 2 - 60 - oy}px`;
+          style.right = `${cw - rect.left + ox + pad}px`;
           break;
         case 'right':
-          style.top = `${rect.top + rect.height / 2 - 60}px`;
-          style.left = `${rect.right + pad}px`;
+          style.top = `${rect.top + rect.height / 2 - 60 - oy}px`;
+          style.left = `${rect.right + pad - ox}px`;
           break;
       }
 
@@ -410,22 +423,22 @@ export default {
 
         // Clamp bottom overflow
         if (tr.bottom > vh - pad) {
-          tooltip.style.top = `${vh - tr.height - pad}px`;
+          tooltip.style.top = `${vh - tr.height - pad - oy}px`;
           tooltip.style.bottom = 'auto';
         }
         // Clamp top overflow
         if (tr.top < pad) {
-          tooltip.style.top = `${pad}px`;
+          tooltip.style.top = `${pad - oy}px`;
           tooltip.style.bottom = 'auto';
         }
         // Clamp right overflow
         if (tr.right > vw - pad) {
-          tooltip.style.left = `${vw - tr.width - pad}px`;
+          tooltip.style.left = `${vw - tr.width - pad - ox}px`;
           tooltip.style.right = 'auto';
         }
         // Clamp left overflow
         if (tr.left < pad) {
-          tooltip.style.left = `${pad}px`;
+          tooltip.style.left = `${pad - ox}px`;
           tooltip.style.right = 'auto';
         }
       });
@@ -493,7 +506,7 @@ export default {
         const fillTimer = setInterval(() => {
           if (input.value && input.value !== initialValue) {
             clearInterval(fillTimer);
-            setTimeout(() => this.advance(), 150);
+            this.advanceTimer = setTimeout(() => this.advance(), 150);
           }
         }, 200);
         this.eventCleanup = () => clearInterval(fillTimer);
@@ -510,7 +523,7 @@ export default {
           this.dialogCloseCleanup = null;
         }
         // Small delay to let the UI update (e.g. dialog opening)
-        setTimeout(() => this.advance(), 150);
+        this.advanceTimer = setTimeout(() => this.advance(), 150);
       };
 
       // Listen on all matched elements — first one to fire advances
@@ -523,6 +536,10 @@ export default {
     },
 
     cleanupStep() {
+      // Restore dialog overflow if we set it to visible for an inDialog step
+      if (this.tooltipTeleportTarget instanceof HTMLElement) {
+        this.tooltipTeleportTarget.style.overflow = '';
+      }
       if (this.pollTimer) {
         clearInterval(this.pollTimer);
         this.pollTimer = null;
@@ -531,6 +548,10 @@ export default {
       this.resizeObserver = null;
       window.removeEventListener('scroll', this.handleScroll, true);
       window.removeEventListener('resize', this.handleScroll);
+      if (this.advanceTimer) {
+        clearTimeout(this.advanceTimer);
+        this.advanceTimer = null;
+      }
       if (this.eventCleanup) {
         this.eventCleanup();
         this.eventCleanup = null;
