@@ -44,7 +44,7 @@ export const useAuthStore = defineStore('auth', {
         // Cookie is gone (browser was closed) — restore from localStorage backup
         const backup = localStorage.getItem(ENCRYPTION_COOKIE_BACKUP_KEY);
         if (backup) {
-          document.cookie = `${ENCRYPTION_COOKIE_NAME}=${backup}; SameSite=None; Secure`;
+          document.cookie = `${ENCRYPTION_COOKIE_NAME}=${backup}; Path=/; SameSite=None; Secure`;
         }
       }
 
