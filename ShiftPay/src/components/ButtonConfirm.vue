@@ -103,7 +103,7 @@ export default {
 <style scoped>
 .slider {
   position: relative;
-  background-color: darkred;
+  background-color: rgba(255, 0, 0, 0.25) !important;
   border-radius: var(--border-radius);
   text-align: center;
   flex-shrink: 1;

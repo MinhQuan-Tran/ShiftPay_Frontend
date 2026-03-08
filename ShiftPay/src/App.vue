@@ -40,6 +40,10 @@ export default {
       this.menuOpened = false;
       (this.$refs['import-dialog'] as any).showModal();
     },
+    showChangelogDialog() {
+      this.menuOpened = false;
+      (this.$refs['changelog-dialog'] as any).showFullHistory();
+    },
     handleSyncComplete() {
       // Clear the pending flag so stores fetch from server
       localStorage.removeItem('syncPending');
@@ -148,7 +152,8 @@ export default {
       <div class="bar"></div>
       <div class="bar"></div>
       <div class="bar"></div>
-      <MainMenu v-if="menuOpened" @login="handleLogin" @import="showImportDialog" @tutorial="startTutorial"></MainMenu>
+      <MainMenu v-if="menuOpened" @login="handleLogin" @import="showImportDialog" @tutorial="startTutorial"
+        @changelog="showChangelogDialog"></MainMenu>
     </div>
   </div>
 
