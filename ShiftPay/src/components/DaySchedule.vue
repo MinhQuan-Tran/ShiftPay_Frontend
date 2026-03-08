@@ -7,7 +7,7 @@ import { mapStores } from 'pinia';
 import { useShiftsStore } from '@/stores/shiftsStore';
 import { useShiftSessionStore } from '@/stores/shiftSessionStore';
 
-import DayScheduleShift from '@/components/DayScheduleShiftCard.vue';
+import DayScheduleShiftCard from '@/components/DayScheduleShiftCard.vue';
 import BaseDialog from '@/components/BaseDialog.vue';
 import ClearShiftsForm from '@/components/ClearShiftsForm.vue';
 import ShiftForm from '@/components/ShiftForm.vue';
@@ -143,7 +143,7 @@ export default {
     };
   },
 
-  components: { DayScheduleShift, BaseDialog, ClearShiftsForm, ShiftForm, LoadingOverlay },
+  components: { DayScheduleShiftCard, BaseDialog, ClearShiftsForm, ShiftForm, LoadingOverlay },
 
   methods: {
     currencyFormat,
@@ -364,7 +364,7 @@ export default {
         <span class="empty-shifts-detail">{{ emptyShiftMessage || 'The schedule is basically on snack break.' }}</span>
       </p>
 
-      <DayScheduleShift v-for="shift in selectedShifts" :key="shift.id" :shift="(shift as Shift)"
+      <DayScheduleShiftCard v-for="shift in selectedShifts" :key="shift.id" :shift="(shift as Shift)"
         :selected-date="selectedRange.start" @edit-shift="handleEditShift" />
     </div>
 

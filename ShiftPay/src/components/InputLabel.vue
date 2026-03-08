@@ -86,7 +86,7 @@ label {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--input-background-color);
+  background-color: var(--input-background-color) !important;
   -webkit-transition: 0.3s;
   transition: 0.3s;
 }
@@ -103,7 +103,7 @@ label {
 }
 
 input:checked+.slider {
-  background-color: v-bind(toggleColor);
+  background-color: v-bind(toggleColor) !important;
 }
 
 input:focus+.slider {

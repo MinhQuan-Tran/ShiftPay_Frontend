@@ -165,15 +165,42 @@ export default {
 
 <style scoped>
 .header {
+  position: sticky;
+  top: 12px;
+  margin-bottom: 12px;
+  z-index: 1;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  height: 24px;
+  padding: var(--padding) calc(var(--padding) * 2);
+  font-size: 1.25rem;
+  background: transparent;
+  box-shadow: 0 10px 10px rgba(0, 0, 0, 0.15);
+  border-radius: 40px;
+  isolation: isolate;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: light-dark(rgba(255, 255, 255, 0.55), rgba(18, 18, 18, 0.45));
+  border: 1px solid light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.22));
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.header>* {
+  position: relative;
+  z-index: 1;
 }
 
 .brand {
-  position: relative;
-  height: 40px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -192,18 +219,19 @@ export default {
 }
 
 .menu-btn {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   cursor: pointer;
   position: relative;
+  background: transparent;
 }
 
 .menu-btn .bar {
   width: 100%;
-  height: 4px;
+  height: 3.5px;
   background-color: light-dark(#121212, #f4f4f4);
   border-radius: 2px;
   transition: all 0.3s ease;

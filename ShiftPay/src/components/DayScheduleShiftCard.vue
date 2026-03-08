@@ -155,7 +155,7 @@ export default {
   padding: var(--padding-small) var(--padding);
   border-radius: var(--border-radius) 0 0 var(--border-radius);
   white-space: nowrap;
-  background-color: var(--input-background-color);
+  background: light-dark(white, #414141) !important;
 }
 
 .datetime .date {
@@ -169,7 +169,7 @@ export default {
   flex-direction: column;
   align-items: stretch;
   flex: 1;
-  background: light-dark(#d8d8d8, #343434);
+  background: light-dark(#dddddd, #343434);
   border-radius: 0 var(--border-radius) var(--border-radius) 0;
   padding: 0;
   transition: all 0.3s;
@@ -191,7 +191,7 @@ export default {
   justify-content: stretch;
   align-items: center;
   align-content: space-between;
-  background-color: var(--input-background-color);
+  background-color: light-dark(white, var(--input-background-color));
   padding: var(--padding);
   border-radius: 0 var(--border-radius) var(--border-radius) 0;
   position: relative;

@@ -59,11 +59,14 @@ dialog {
   border: none;
   outline: none;
   border-radius: var(--border-radius);
-  background-color: var(--popup-background-color);
+  background: light-dark(rgba(255, 255, 255, 0.75), rgba(24, 24, 24, 0.5));
+  border: 1px solid light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.18));
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
   width: clamp(300px, 85dvw, 500px);
   max-height: 90dvh;
   overflow-y: hidden;
-  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
   padding: 0;
 }
 
@@ -88,6 +91,11 @@ dialog::backdrop {
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  background: transparent;
+}
+
+.dialog *:not(input, select, textarea, button, .datalist) {
+  background-color: transparent;
 }
 
 .header {
@@ -97,6 +105,7 @@ dialog::backdrop {
   font-size: 1.25em;
   line-height: 1.25em;
   align-items: center;
+  border-bottom: 2px solid var(--primary-color);
 }
 
 .title {
