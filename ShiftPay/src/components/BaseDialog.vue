@@ -68,6 +68,7 @@ dialog {
   overflow-y: hidden;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
   padding: 0;
+  z-index: -1000;
 }
 
 dialog::backdrop {
@@ -92,6 +93,7 @@ dialog::backdrop {
   flex-direction: column;
   align-items: stretch;
   background: transparent;
+  z-index: -1000;
 }
 
 .dialog *:not(input, select, textarea, button, .datalist) {
@@ -111,7 +113,7 @@ dialog::backdrop {
 .title {
   text-align: left;
   margin: 0;
-  margin-left: var(--padding);
+  margin-left: calc(var(--padding) * 1.5);
 }
 
 .close-btn {
@@ -122,11 +124,14 @@ dialog::backdrop {
   user-select: none;
   width: auto;
   border-radius: 0;
+  outline: none;
+  transition: all 0.25s;
 }
 
 .close-btn,
 .close-btn:hover {
   box-shadow: none;
+  outline: none;
 }
 
 .close-btn:hover,

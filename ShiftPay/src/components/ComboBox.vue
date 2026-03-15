@@ -86,26 +86,28 @@ export default {
 .datalist {
   position: absolute;
   top: 0;
-  left: calc(var(--border-radius) / 2);
+  left: 0;
   z-index: -1;
   border: 1px solid var(--text-color-faded);
   box-sizing: border-box;
   overflow: hidden;
-  width: calc(100% - var(--border-radius));
+  width: 100%;
   font-size: inherit;
   background-color: var(--input-background-color);
   box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.5);
   border-radius: var(--border-radius);
-  /* Small delay when closing to let the click event fire */
-  transition: all 0.3s allow-discrete 0.2s;
   transform-origin: top;
+  /* No delay when closing */
+  transition: all 0.25s allow-discrete;
   transform: scaleY(0);
+  opacity: 0;
 }
 
 .datalist.show {
+  /* Small delay when showing */
+  transition-delay: 0.2s;
   transform: scaleY(1);
-  /* No delaying when showing */
-  transition: all 0.3s;
+  opacity: 1;
 }
 
 .list {
@@ -124,6 +126,7 @@ export default {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+  align-items: center;
   gap: 1em;
   text-wrap: balance;
   text-wrap: pretty;

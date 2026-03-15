@@ -80,17 +80,13 @@ input {
 
 input:not([type='checkbox'], [type='radio']) {
   border: none;
-  background-color: var(--input-background-color);
+  background-color: light-dark(rgba(255, 255, 255, 0.55), rgba(24, 24, 24, 0.75));
+  border-bottom: 2px solid var(--primary-color);
   border-radius: var(--border-radius);
   box-sizing: border-box;
   width: 100%;
   padding: var(--padding);
-}
-
-input:focus,
-button:focus {
-  transition: outline 0s;
-  outline: 2px solid var(--primary-color);
+  transition: all 0.25s ease-in-out;
 }
 
 button {
@@ -105,7 +101,7 @@ button {
   line-height: 2em;
   padding: 0.5em;
   font-weight: bold;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.25s ease-in-out;
   background: var(--button-color);
   color: var(--text-color);
   box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.5);
@@ -113,7 +109,16 @@ button {
 
 button:hover {
   opacity: 0.8;
-  box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.8);
+}
+
+input,
+button {
+  outline: 2px solid transparent;
+}
+
+input:focus,
+button:focus {
+  outline: 2px solid var(--primary-color);
 }
 
 .primary {
@@ -162,14 +167,46 @@ button.danger {
   vertical-align: sub;
 }
 
-form .actions {
+/* Apply to all actions bars (including forms and everything else) */
+.actions {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: stretch;
   gap: var(--gap-horizontal);
-  margin-top: var(--padding);
   text-wrap: nowrap;
+  transition: all 0.25s;
+}
+
+/* ── Action bar ── */
+.actions > * {
+  max-width: 100%;
+  min-width: fit-content;
+  flex: 1;
+  overflow: hidden;
+  text-wrap: nowrap;
+}
+
+.actions button {
+  flex: 1;
+  transition: all 0.3s ease;
+}
+
+.actions .danger {
+  flex-grow: 0;
+}
+
+.actions:has(.focus) {
+  gap: 0;
+}
+
+.actions:has(.focus) > *:not(.focus) {
+  max-width: 0;
+  padding: 0;
+}
+
+.actions .focus {
+  flex-grow: 1 !important;
 }
 
 #app {

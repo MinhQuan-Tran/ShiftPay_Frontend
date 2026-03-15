@@ -469,9 +469,6 @@ export default {
       </InputLabel>
     </div>
 
-    <!-- ── Actions ── -->
-    <div class="action-divider"></div>
-
     <div ref="actionBar" class="actions">
       <!-- Edit -->
       <template v-if="action == 'edit'">
@@ -642,10 +639,8 @@ form {
   border: 1.5px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
   box-shadow: none;
   color: var(--primary-color);
-  font-weight: 600;
-  font-size: 0.85em;
-  border-radius: 8px;
-  padding: 0.5em;
+  font-weight: bold;
+  font-size: small;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
@@ -690,46 +685,6 @@ form {
   grid-area: end-date;
 }
 
-/* ── Action divider ── */
-.action-divider {
-  height: 1px;
-  background: light-dark(rgba(71, 172, 255, 0.15), rgba(71, 172, 255, 0.12));
-}
-
-/* ── Action bar ── */
-.actions {
-  transition: all 0.3s ease;
-}
-
-.actions>* {
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.actions button {
-  flex: 1;
-  transition: all 0.3s ease;
-  border-radius: 10px;
-  padding: 0.6em 1em;
-}
-
-.actions .danger {
-  flex-grow: 0;
-}
-
-.actions:has(.focus) {
-  gap: 0;
-}
-
-.actions:has(.focus)>*:not(.focus) {
-  max-width: 0;
-  padding: 0;
-}
-
-.actions .focus {
-  flex-grow: 1 !important;
-}
-
 /* ── Spinner ── */
 .button-spinner {
   display: inline-block;
@@ -771,11 +726,6 @@ input[type='datetime-local'] {
 
   .template-chip-name {
     font-size: 0.8em;
-  }
-
-  .actions button {
-    padding: 0.5em 0.6em;
-    font-size: 0.9em;
   }
 }
 </style>

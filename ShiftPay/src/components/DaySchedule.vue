@@ -418,19 +418,6 @@ export default {
   align-items: stretch;
 }
 
-.actions {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: var(--gap-horizontal);
-  margin: var(--padding-small) 0;
-}
-
-.actions>* {
-  flex: 1;
-  text-wrap: nowrap;
-}
-
 .actions #clear-btn {
   flex-grow: 0;
 }
@@ -440,6 +427,7 @@ export default {
   flex-grow: 10;
 }
 
+/* For animation from Vue */
 .actions #check-in-out-btn.v-enter-from,
 .actions #check-in-out-btn.v-leave-to {
   flex-grow: 0;
