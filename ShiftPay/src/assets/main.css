@@ -7,9 +7,9 @@
   --danger-color: #ff6464;
   --success-color: #64ff64;
 
-  --background-color: light-dark(#fafafa, #272727);
+  --background-color: light-dark(#ffffff, #272727);
   --popup-background-color: light-dark(#fff, #303030);
-  --input-background-color: light-dark(#e6e6e6, #414141);
+  --input-background-color: light-dark(#dbdbdb, #414141);
   --button-color: light-dark(#ededed, #545454);
   --text-color-white: #fff;
   --text-color-black: #000;
@@ -80,7 +80,7 @@ input {
 
 input:not([type='checkbox'], [type='radio']) {
   border: none;
-  background-color: light-dark(rgba(255, 255, 255, 0.55), rgba(24, 24, 24, 0.75));
+  background-color: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.07));
   border-bottom: 2px solid var(--primary-color);
   border-radius: var(--border-radius);
   box-sizing: border-box;
@@ -98,8 +98,9 @@ button {
   align-items: center;
   justify-content: center;
   border-radius: var(--border-radius);
+  min-width: 32px;
   line-height: 2em;
-  padding: 0.5em;
+  padding: var(--padding);
   font-weight: bold;
   transition: all 0.25s ease-in-out;
   background: var(--button-color);

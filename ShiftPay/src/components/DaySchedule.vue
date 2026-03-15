@@ -363,9 +363,9 @@ export default {
     </div>
 
     <div class="shift-list" id="shift-list">
-      <p v-if="selectedShifts.length === 0" class="empty-shifts-message">
-        <span class="empty-shifts-title">No shifts in this range.</span>
-        <span class="empty-shifts-detail">{{ emptyShiftMessage || 'The schedule is basically on snack break.' }}</span>
+      <p v-if="selectedShifts.length === 0" class="empty-shifts">
+        <span class="title">No shifts in this range.</span>
+        <span class="detail">{{ emptyShiftMessage || 'The schedule is basically on snack break.' }}</span>
       </p>
 
       <div v-if="selectedShifts.length > 0 && showLegends" class="icon-legend">
@@ -450,7 +450,7 @@ export default {
   --datetime-width: v-bind('datetimeWidth');
 }
 
-.empty-shifts-message {
+.empty-shifts {
   margin: 0;
   padding: var(--padding);
   border-radius: var(--border-radius);
@@ -460,12 +460,12 @@ export default {
   text-align: center;
 }
 
-.empty-shifts-title,
-.empty-shifts-detail {
+.empty-shifts .title,
+.empty-shifts .detail {
   display: block;
 }
 
-.empty-shifts-title {
+.empty-shifts .title {
   font-weight: bold;
   color: var(--text-color);
   margin-bottom: var(--padding-small);

@@ -36,7 +36,7 @@ export default {
       formData: deepClone<Partial<Shift>>(this.shift),
       saveShiftTemplate: false,
       deleteShiftTemplate: false,
-      recurringShift: false,
+      repeatShift: false,
       templateName: '',
       hiddenElements: [] as Element[], // Elements to hide when holding a button in action bar
       currentAction: '', // Track the current action being performed for loading state
@@ -128,33 +128,33 @@ export default {
             const newShifts: Shift[] = [];
             newShifts.push(shift);
 
-            // Handle recurring shifts
-            if (this.recurringShift) {
-              const recurringDay = Number((this.$refs['recurring-day'] as HTMLInputElement)?.value);
-              const recurringMonth = Number((this.$refs['recurring-month'] as HTMLInputElement)?.value);
-              const recurringYear = Number((this.$refs['recurring-year'] as HTMLInputElement)?.value);
+            // Handle repeat shifts
+            if (this.repeatShift) {
+              const repeatDay = Number((this.$refs['repeat-day'] as HTMLInputElement)?.value);
+              const repeatMonth = Number((this.$refs['repeat-month'] as HTMLInputElement)?.value);
+              const repeatYear = Number((this.$refs['repeat-year'] as HTMLInputElement)?.value);
 
-              const recurringEndDate = new Date(
-                (this.$refs['recurring-end-date'] as HTMLInputElement)?.value ?? shift!.startTime
+              const repeatEndDate = new Date(
+                (this.$refs['repeat-end-date'] as HTMLInputElement)?.value ?? shift!.startTime
               );
-              recurringEndDate.setHours(23, 59, 59, 999);
+              repeatEndDate.setHours(23, 59, 59, 999);
 
               const duration = shift!.endTime.getTime() - shift!.startTime.getTime();
 
               for (
                 const currentFromDate = new Date(shift!.startTime);
-                currentFromDate < recurringEndDate;
+                currentFromDate < repeatEndDate;
                 // Skip the first shift as it's already added
               ) {
-                // Increment the currentFromDate by the recurring interval
-                currentFromDate.setDate(currentFromDate.getDate() + recurringDay);
-                currentFromDate.setMonth(currentFromDate.getMonth() + recurringMonth);
-                currentFromDate.setFullYear(currentFromDate.getFullYear() + recurringYear);
+                // Increment the currentFromDate by the repeat interval
+                currentFromDate.setDate(currentFromDate.getDate() + repeatDay);
+                currentFromDate.setMonth(currentFromDate.getMonth() + repeatMonth);
+                currentFromDate.setFullYear(currentFromDate.getFullYear() + repeatYear);
 
                 const start = new Date(currentFromDate);
                 const end = new Date(currentFromDate.getTime() + duration);
 
-                const recurringShift = new Shift({
+                const repeatShift = new Shift({
                   workplace: shift!.workplace,
                   payRate: shift!.payRate,
                   startTime: start,
@@ -162,7 +162,7 @@ export default {
                   unpaidBreaks: shift!.unpaidBreaks
                 });
 
-                newShifts.push(recurringShift);
+                newShifts.push(repeatShift);
               }
             }
 
@@ -330,8 +330,8 @@ export default {
             type="button" :class="['template-chip', { 'template-chip--delete': deleteShiftTemplate }]">
             <span class="template-chip-name">{{ name }}</span>
           </button>
-          <button type="button" :class="['template-chip template-chip--add', { active: saveShiftTemplate }]"
-            id="save-shift-template-btn" @click="saveShiftTemplate = !saveShiftTemplate">
+          <button type="button" :class="['add-item-btn', { active: saveShiftTemplate }]" id="save-shift-template-btn"
+            @click="saveShiftTemplate = !saveShiftTemplate">
             <span class="template-chip-name">+</span>
           </button>
         </div>
@@ -447,24 +447,38 @@ export default {
         </div>
 
         <!-- Add unpaid break -->
-        <button type="button" class="add-row-btn" @click="addUnpaidBreak">+ Add Break</button>
+        <button type="button" class="add-item-btn" @click="addUnpaidBreak">+</button>
       </div>
     </div>
 
-    <!-- ── Recurring ── -->
+    <!-- ── Repeat (Recurring) ── -->
     <div v-if="action === 'add' || action === 'check in/out'" class="form-section">
-      <span class="section-label">Recurring</span>
+      <span class="section-label">Repeat</span>
 
-      <InputLabel label-text="Enable" for-id="recurring" v-model:toggle-value="recurringShift">
-        <div v-if="recurringShift" class="recurring-inputs">
-          <span>Shift repeat every:</span>
-          <input type="number" ref="recurring-day" id="recurring-day" name="recurringDay" placeholder="Day" min="0"
-            max="31" />
-          <input type="number" ref="recurring-month" id="recurring-month" name="recurringMonth" placeholder="Month"
-            min="0" max="12" />
-          <input type="number" ref="recurring-year" id="recurring-year" name="recurringYear" placeholder="Year"
-            min="0" />
-          <input type="date" ref="recurring-end-date" id="recurring-end-date" name="recurringEndDate" required />
+      <InputLabel label-text="Enable" v-model:toggle-value="repeatShift">
+        <div v-if="repeatShift" class="repeat-inputs">
+          <fieldset class="repeat-every">
+            <legend>Repeat Every</legend>
+            <label for="repeat-day" id="repeat-day-label">
+              Day(s)
+              <input type="number" ref="repeat-day" id="repeat-day" name="repeatDay" placeholder="Day" min="0"
+                max="31" />
+            </label>
+            <label for="repeat-month" id="repeat-month-label">
+              Month(s)
+              <input type="number" ref="repeat-month" id="repeat-month" name="repeatMonth" placeholder="Month" min="0"
+                max="12" />
+            </label>
+            <label for="repeat-year" id="repeat-year-label">
+              Year(s)
+              <input type="number" ref="repeat-year" id="repeat-year" name="repeatYear" placeholder="Year" min="0" />
+            </label>
+          </fieldset>
+
+          <label for="repeat-end-date" id="repeat-end-date-label">
+            End Date
+            <input type="date" ref="repeat-end-date" id="repeat-end-date" name="repeatEndDate" required />
+          </label>
         </div>
       </InputLabel>
     </div>
@@ -553,7 +567,17 @@ form {
 }
 
 .template-chip {
-  background: var(--input-background-color);
+  min-width: fit-content;
+  background-color: light-dark(rgba(255, 255, 255, 0.55), rgba(24, 24, 24, 0.75)) !important;
+  cursor: pointer;
+  transition: outline 0.25s;
+  outline: 2px solid var(--input-background-color);
+}
+
+.template-chip:focus,
+.template-chip:hover {
+  outline-color: var(--text-color-faded);
+  opacity: 1;
 }
 
 .template-chip:active {
@@ -571,23 +595,25 @@ form {
   opacity: 1;
 }
 
-.template-chip--add {
+/* .template-chip--add {
   background: transparent;
   border: 1.5px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
   color: var(--primary-color);
   box-shadow: none;
   min-width: 32px;
+  outline: none;
 }
 
+.template-chip--add:focus,
 .template-chip--add:hover {
   border-color: var(--primary-color);
   color: var(--primary-color);
   background: transparent;
-}
+} */
 
 .template-chip-name {
-  font-size: 0.85em;
-  font-weight: 600;
+  font-size: smaller;
+  font-weight: bold;
 }
 
 #save-shift-template-btn.active,
@@ -634,55 +660,40 @@ form {
   box-shadow: none;
 }
 
-.add-row-btn {
+.add-item-btn {
   background: transparent;
   border: 1.5px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
   box-shadow: none;
   color: var(--primary-color);
   font-weight: bold;
-  font-size: small;
+  font-size: larger;
+  padding: 0;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.add-row-btn:hover {
+.add-item-btn:hover {
   border-color: var(--primary-color);
   color: var(--primary-color);
   box-shadow: none;
   opacity: 1;
 }
 
-/* ── Recurring ── */
-.recurring-inputs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: auto;
-  grid-template-areas:
-    'text text text text'
-    'day month year year'
-    'end-date end-date end-date end-date';
-  gap: var(--padding-small);
+/* ── Repeat ── */
+.repeat-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding);
 }
 
-.recurring-inputs span {
-  grid-area: text;
-  font-size: 0.85em;
-  color: var(--text-color-faded);
+.repeat-every {
+  display: flex;
+  flex-direction: row;
+  gap: var(--padding);
+  border-radius: var(--border-radius);
 }
 
-.recurring-inputs input#recurring-day {
-  grid-area: day;
-}
-
-.recurring-inputs input#recurring-month {
-  grid-area: month;
-}
-
-.recurring-inputs input#recurring-year {
-  grid-area: year;
-}
-
-.recurring-inputs input#recurring-end-date {
-  grid-area: end-date;
+.repeat-every #repeat-year {
+  flex: 2;
 }
 
 /* ── Spinner ── */
@@ -717,11 +728,6 @@ input[type='datetime-local'] {
 @media (max-width: 360px) {
   .form-section {
     padding: 0.2em 0.2em 0.2em 0.5em;
-  }
-
-  .template-chip {
-    min-width: 60px;
-    padding: 0.35em 0.6em;
   }
 
   .template-chip-name {

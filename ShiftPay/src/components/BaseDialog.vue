@@ -46,7 +46,6 @@ export default {
           <div class="icons8-close"></div>
         </button>
       </div>
-      <div class="divider"></div>
       <div class="content">
         <slot></slot>
       </div>
@@ -141,16 +140,22 @@ dialog::backdrop {
   background-color: var(--danger-color);
 }
 
-.divider {
-  width: 100%;
-  height: 2px;
-  flex-shrink: 0;
-  background-color: var(--primary-color);
-}
-
 .content {
   flex: 1;
   overflow-y: auto;
   padding: var(--padding);
+}
+
+@media (prefers-color-scheme: light) {
+  .content {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .content {
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+  }
 }
 </style>
