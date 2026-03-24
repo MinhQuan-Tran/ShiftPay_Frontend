@@ -36,7 +36,7 @@ export default {
       formData: deepClone<Partial<Shift>>(this.shift),
       saveShiftTemplate: false,
       deleteShiftTemplate: false,
-      repeatShift: false,
+      repeatPreset: 'none',
       templateName: '',
       hiddenElements: [] as Element[], // Elements to hide when holding a button in action bar
       currentAction: '', // Track the current action being performed for loading state
@@ -59,13 +59,18 @@ export default {
   },
 
   methods: {
-    setRepeatPreset(preset: '1d' | '1w' | '1m' | 'custom') {
-      // Set repeat fields for quick buttons
+    setRepeatPreset(preset: 'none' | '1d' | '1w' | '1m' | 'custom') {
+      // Set repeat fields for radio buttons
       const dayInput = this.$refs['repeat-day'] as HTMLInputElement | undefined;
       const monthInput = this.$refs['repeat-month'] as HTMLInputElement | undefined;
       const yearInput = this.$refs['repeat-year'] as HTMLInputElement | undefined;
       if (!dayInput || !monthInput || !yearInput) return;
       switch (preset) {
+        case 'none':
+          dayInput.value = '0';
+          monthInput.value = '0';
+          yearInput.value = '0';
+          break;
         case '1d':
           dayInput.value = '1';
           monthInput.value = '0';
@@ -85,8 +90,7 @@ export default {
           // Do not change values
           break;
       }
-      // Trigger repeatShift if not already enabled
-      if (!this.repeatShift) this.repeatShift = true;
+      this.repeatPreset = preset;
     },
     // Cannot use alert directly on event
     alert(message: string) {
@@ -158,10 +162,10 @@ export default {
             newShifts.push(shift);
 
             // Handle repeat shifts
-            if (this.repeatShift) {
-              const repeatDay = Number((this.$refs['repeat-day'] as HTMLInputElement)?.value);
-              const repeatMonth = Number((this.$refs['repeat-month'] as HTMLInputElement)?.value);
-              const repeatYear = Number((this.$refs['repeat-year'] as HTMLInputElement)?.value);
+            if (this.repeatPreset !== 'none') {
+              const repeatDay = Number((this.$refs['repeat-day'] as HTMLInputElement)?.value) || 0;
+              const repeatMonth = Number((this.$refs['repeat-month'] as HTMLInputElement)?.value) || 0;
+              const repeatYear = Number((this.$refs['repeat-year'] as HTMLInputElement)?.value) || 0;
 
               const repeatEndDate = new Date(
                 (this.$refs['repeat-end-date'] as HTMLInputElement)?.value ?? shift!.startTime
@@ -354,15 +358,11 @@ export default {
       <InputLabel label-text="Shift Templates" v-model:toggle-value="deleteShiftTemplate"
         toggle-color="var(--danger-color)" sub-text="Delete" :loading="shiftTemplatesStore.status === STATUS.Loading">
         <div class="shift-templates">
-          <button v-for="[name, template] in shiftTemplatesStore.templates" :key="name"
+          <input v-for="[name, template] in shiftTemplatesStore.templates" :key="name" :value="name"
             @click="deleteShiftTemplate ? shiftTemplatesStore.delete(name) : quickAddShift(template.shift as Shift)"
-            type="button" :class="['template-chip', { 'template-chip--delete': deleteShiftTemplate }]">
-            <span class="template-chip-name">{{ name }}</span>
-          </button>
-          <button type="button" :class="['add-item-btn', { active: saveShiftTemplate }]" id="save-shift-template-btn"
-            @click="saveShiftTemplate = !saveShiftTemplate">
-            <span class="template-chip-name">+</span>
-          </button>
+            type="button" :class="['chip btn', { 'delete': deleteShiftTemplate }]" />
+          <input type="button" :class="['btn add-item-btn', { active: saveShiftTemplate }]" value="+"
+            id="save-shift-template-btn" @click="saveShiftTemplate = !saveShiftTemplate" />
         </div>
       </InputLabel>
 
@@ -484,38 +484,44 @@ export default {
     <div v-if="action === 'add' || action === 'check in/out'" class="form-section">
       <span class="section-label">Repeat</span>
 
-      <InputLabel label-text="Enable" v-model:toggle-value="repeatShift">
-        <div v-if="repeatShift" class="repeat-inputs">
-          <div class="repeat-quick-btns">
-            <button type="button" class="repeat-btn" @click="setRepeatPreset('1d')">1 day</button>
-            <button type="button" class="repeat-btn" @click="setRepeatPreset('1w')">1 week</button>
-            <button type="button" class="repeat-btn" @click="setRepeatPreset('1m')">1 month</button>
-            <button type="button" class="repeat-btn" @click="setRepeatPreset('custom')">Custom</button>
-          </div>
-          <fieldset class="repeat-every">
-            <legend>Repeat Every</legend>
-            <label for="repeat-day" id="repeat-day-label">
-              Day(s)
-              <input type="number" ref="repeat-day" id="repeat-day" name="repeatDay" placeholder="Day" min="0"
-                max="31" />
-            </label>
-            <label for="repeat-month" id="repeat-month-label">
-              Month(s)
-              <input type="number" ref="repeat-month" id="repeat-month" name="repeatMonth" placeholder="Month" min="0"
-                max="12" />
-            </label>
-            <label for="repeat-year" id="repeat-year-label">
-              Year(s)
-              <input type="number" ref="repeat-year" id="repeat-year" name="repeatYear" placeholder="Year" min="0" />
-            </label>
-          </fieldset>
-
-          <label for="repeat-end-date" id="repeat-end-date-label">
-            End Date
-            <input type="date" ref="repeat-end-date" id="repeat-end-date" name="repeatEndDate" required />
+      <div class="repeat-inputs">
+        <div class="repeat-quick-btns" role="radiogroup" aria-label="Repeat Presets">
+          <label v-for="preset in [
+            { val: 'none', label: 'None' },
+            { val: '1d', label: 'Daily' },
+            { val: '1w', label: 'Weekly' },
+            { val: '1m', label: 'Monthly' },
+            { val: 'custom', label: 'Custom' }
+          ]" :key="preset.val" class="chip btn repeat-chip" :class="{ active: repeatPreset === preset.val }"
+            tabindex="0">
+            <input type="radio" name="repeat-preset" :value="preset.val" v-model="repeatPreset"
+              @change="setRepeatPreset(preset.val as 'none' | '1d' | '1w' | '1m' | 'custom')" style="display:none;" />
+            <span class="name">{{ preset.label }}</span>
           </label>
         </div>
-      </InputLabel>
+
+        <fieldset v-if="repeatPreset === 'custom'" class="repeat-every">
+          <legend>Repeat Every</legend>
+          <label for="repeat-day" id="repeat-day-label">
+            Day(s)
+            <input type="number" ref="repeat-day" id="repeat-day" name="repeatDay" placeholder="Day" min="0" max="31" />
+          </label>
+          <label for="repeat-month" id="repeat-month-label">
+            Month(s)
+            <input type="number" ref="repeat-month" id="repeat-month" name="repeatMonth" placeholder="Month" min="0"
+              max="12" />
+          </label>
+          <label for="repeat-year" id="repeat-year-label">
+            Year(s)
+            <input type="number" ref="repeat-year" id="repeat-year" name="repeatYear" placeholder="Year" min="0" />
+          </label>
+        </fieldset>
+
+        <label v-if="repeatPreset != 'none'" for="repeat-end-date" id="repeat-end-date-label">
+          End Date
+          <input type="date" ref="repeat-end-date" id="repeat-end-date" name="repeatEndDate" required />
+        </label>
+      </div>
     </div>
 
     <div ref="actionBar" class="actions">
@@ -568,7 +574,7 @@ export default {
 
 <style scoped>
 form {
-  gap: 0.6em;
+  gap: calc(var(--padding) * 2);
   position: relative;
 }
 
@@ -591,9 +597,12 @@ form {
 }
 
 /* ── Shift template chips ── */
-.shift-templates {
+.shift-templates,
+.repeat-quick-btns {
   position: relative;
   display: flex;
+  height: fit-content;
+  box-sizing: border-box;
   overflow-x: auto;
   white-space: nowrap;
   gap: 0.5em;
@@ -601,54 +610,42 @@ form {
   -webkit-overflow-scrolling: touch;
 }
 
-.template-chip {
+.chip {
   min-width: fit-content;
   background-color: light-dark(rgba(255, 255, 255, 0.55), rgba(24, 24, 24, 0.75)) !important;
   cursor: pointer;
-  transition: outline 0.25s;
+  transition: outline var(--transition-duration);
   outline: 2px solid var(--input-background-color);
+  font-size: small;
+  font-weight: bold;
+  height: 3em;
+  box-sizing: border-box;
+  padding: var(--padding-small) calc(var(--padding) * 2);
 }
 
-.template-chip:focus,
-.template-chip:hover {
+.chip:focus,
+.chip:hover {
   outline-color: var(--text-color-faded);
-  opacity: 1;
 }
 
-.template-chip:active {
+.chip:has(input[type='radio']:checked) {
+  outline-color: var(--primary-color);
+}
+
+.chip:active {
+  outline-color: var(--primary-color);
   transform: scale(0.97);
 }
 
-.template-chip--delete {
+.chip.delete {
   outline: 2px dashed var(--danger-color);
   outline-offset: -1.5px;
 }
 
-.template-chip--delete:hover {
+.chip--delete:hover {
   outline: 2px solid var(--danger-color);
   background: var(--danger-color);
   opacity: 1;
-}
-
-/* .template-chip--add {
-  background: transparent;
-  border: 1.5px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
-  color: var(--primary-color);
-  box-shadow: none;
-  min-width: 32px;
-  outline: none;
-}
-
-.template-chip--add:focus,
-.template-chip--add:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-  background: transparent;
-} */
-
-.template-chip-name {
-  font-size: smaller;
-  font-weight: bold;
 }
 
 #save-shift-template-btn.active,
@@ -718,12 +715,6 @@ form {
   display: flex;
   flex-direction: column;
   gap: var(--padding);
-}
-
-.repeat-quick-btns {
-  display: flex;
-  gap: 0.5em;
-  margin-bottom: 0.5em;
 }
 
 .repeat-btn {

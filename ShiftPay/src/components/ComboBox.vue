@@ -94,10 +94,11 @@ export default {
     <div ref="datalist" class="datalist">
       <div class="list">
         <div v-for="(itemName, index) in filteredList" :key="index" class="item"
-          @click="$emit('update:value', itemName)">
+          @mousedown="$emit('update:value', itemName)">
           {{ itemName }}
+
           <ButtonConfirm v-if="deletable" class="delete-btn danger" direction="to-left" @isHolding="setHoldingDelete"
-            @click="handleDelete(itemName)" style="margin-left:auto;">
+            @click="handleDelete(itemName)" @mousedown.stop @pointerdown.stop style="margin-left:auto;">
             <div class="icons8-close"></div>
           </ButtonConfirm>
         </div>
@@ -127,7 +128,7 @@ export default {
   border-radius: var(--border-radius);
   transform-origin: top;
   /* Need delay for the click event */
-  transition: all 0.25s allow-discrete 0.1s;
+  transition: all var(--transition-duration) allow-discrete 0.2s;
   transform: scaleY(0);
   opacity: 0;
 }

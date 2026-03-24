@@ -137,7 +137,7 @@ dialog::backdrop {
   width: auto;
   border-radius: 0;
   outline: none;
-  transition: all 0.25s;
+  transition: all var(--transition-duration);
 }
 
 .close-btn,

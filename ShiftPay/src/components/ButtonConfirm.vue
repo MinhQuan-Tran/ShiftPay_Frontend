@@ -82,15 +82,13 @@ export default {
       document.removeEventListener('pointercancel', this.pointerup);
     },
 
-    handleClick(event: Event) {
+    handleClick() {
       if (!this.confirmed) {
-        return event.preventDefault();
+        return;
       }
 
       this.confirmed = false;
-
       this.$emit('click');
-      return true;
     }
   },
 
@@ -105,8 +103,8 @@ export default {
       {{ direction == "to-left" ? "←" : "" }}
       Slide to confirm
       {{ direction == "to-right" ? "→" : "" }}</span>
-    <button ref="button" class="button-confirm" v-bind="$attrs" @pointerdown="pointerdown" @click.stop="handleClick"
-      @touchstart.prevent @dragstart.prevent>
+    <button ref="button" class="button-confirm" v-bind="$attrs" @pointerdown="pointerdown"
+      @click.stop.prevent="handleClick" @touchstart.prevent @dragstart.prevent>
       <slot></slot>
     </button>
   </div>
@@ -138,7 +136,7 @@ export default {
   pointer-events: none;
   text-wrap: nowrap;
   opacity: 0;
-  transition: all 0.25s allow-discrete;
+  transition: all var(--transition-duration) allow-discrete;
 }
 
 .slider.focus .placeholder {

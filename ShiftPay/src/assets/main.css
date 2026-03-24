@@ -23,6 +23,8 @@
 
   --padding: 0.5em;
   --padding-small: 0.3em;
+
+  --transition-duration: 0.25s;
 }
 
 * {
@@ -74,11 +76,8 @@ form {
   align-items: stretch;
 }
 
-input {
+input:not([type='checkbox'], [type='radio'], [type='button'], [type='submit'], [type='reset']) {
   font-size: large;
-}
-
-input:not([type='checkbox'], [type='radio']) {
   border: none;
   background-color: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.07));
   border-bottom: 2px solid var(--primary-color);
@@ -86,10 +85,11 @@ input:not([type='checkbox'], [type='radio']) {
   box-sizing: border-box;
   width: 100%;
   padding: var(--padding);
-  transition: all 0.25s ease-in-out;
+  transition: all var(--transition-duration) ease-in-out;
 }
 
-button {
+button,
+.btn {
   position: relative;
   border: none;
   outline: none;
@@ -102,7 +102,7 @@ button {
   line-height: 2em;
   padding: var(--padding);
   font-weight: bold;
-  transition: all 0.25s ease-in-out;
+  transition: all var(--transition-duration) ease-in-out;
   background: var(--button-color);
   color: var(--text-color);
   box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.5);
@@ -176,7 +176,7 @@ button.danger {
   align-items: stretch;
   gap: var(--gap-horizontal);
   text-wrap: nowrap;
-  transition: all 0.25s;
+  transition: all var(--transition-duration);
 }
 
 /* ── Action bar ── */

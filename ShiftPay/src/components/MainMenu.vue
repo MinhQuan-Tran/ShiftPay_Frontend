@@ -115,24 +115,32 @@ export default {
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.18),
     0 2px 8px rgba(0, 0, 0, 0.12);
-  animation: menu-enter 0.18s ease-out;
   background: light-dark(rgba(255, 255, 255, 0.5), rgba(18, 18, 18, 0.42));
   border: 1px solid light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.16));
+  transform-origin: top right;
   backdrop-filter: blur(32px) saturate(140%);
   -webkit-backdrop-filter: blur(32px) saturate(140%);
 }
 
-@keyframes menu-enter {
-  from {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.97);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+/* Vue Transition for menu open/close */
+.menu-fade-enter-active,
+.menu-fade-leave-active {
+  transition: all var(--transition-duration) ease;
 }
+
+.menu-fade-enter-from,
+.menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.97, 0.8);
+}
+
+.menu-fade-enter-to,
+.menu-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1, 1);
+}
+
+
 
 /* ── Section headings ── */
 .menu-heading {
