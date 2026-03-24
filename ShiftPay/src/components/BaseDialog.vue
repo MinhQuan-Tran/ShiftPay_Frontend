@@ -58,16 +58,29 @@ dialog {
   border: none;
   outline: none;
   border-radius: var(--border-radius);
-  background: light-dark(rgba(255, 255, 255, 0.75), rgba(24, 24, 24, 0.5));
-  border: 1px solid light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.18));
-  backdrop-filter: blur(24px) saturate(140%);
-  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(50px) saturate(200%);
+  -webkit-backdrop-filter: blur(50px) saturate(200%);
   width: clamp(300px, 85dvw, 500px);
   max-height: 90dvh;
   overflow-y: hidden;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
   padding: 0;
   z-index: -1000;
+  border: 1px solid light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.16));
+}
+
+@media (prefers-color-scheme: light) {
+  dialog {
+    background: linear-gradient(315deg, rgba(255, 255, 255, 0.7) 0%, rgba(240, 240, 240, 0.7) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  dialog {
+    background: linear-gradient(315deg, rgba(51, 51, 51, 0.3) 0%, rgba(14, 14, 14, 0.3) 100%);
+    border: 1px solid rgba(0, 0, 0, 0.25);
+  }
 }
 
 dialog::backdrop {

@@ -59,6 +59,35 @@ export default {
   },
 
   methods: {
+    setRepeatPreset(preset: '1d' | '1w' | '1m' | 'custom') {
+      // Set repeat fields for quick buttons
+      const dayInput = this.$refs['repeat-day'] as HTMLInputElement | undefined;
+      const monthInput = this.$refs['repeat-month'] as HTMLInputElement | undefined;
+      const yearInput = this.$refs['repeat-year'] as HTMLInputElement | undefined;
+      if (!dayInput || !monthInput || !yearInput) return;
+      switch (preset) {
+        case '1d':
+          dayInput.value = '1';
+          monthInput.value = '0';
+          yearInput.value = '0';
+          break;
+        case '1w':
+          dayInput.value = '7';
+          monthInput.value = '0';
+          yearInput.value = '0';
+          break;
+        case '1m':
+          dayInput.value = '0';
+          monthInput.value = '1';
+          yearInput.value = '0';
+          break;
+        case 'custom':
+          // Do not change values
+          break;
+      }
+      // Trigger repeatShift if not already enabled
+      if (!this.repeatShift) this.repeatShift = true;
+    },
     // Cannot use alert directly on event
     alert(message: string) {
       alert(message);
@@ -370,7 +399,7 @@ export default {
           @delete-item="payRate => formData.workplace ? workInfosStore.delete(formData.workplace, Number(payRate)).catch((error) => alert('Failed to delete pay rate \n' + error.message)) : null"
           deletable>
           <input type="number" id="pay-rate" name="payRate" placeholder="e.g. 23.23" v-model="formData.payRate"
-            step="0.01" min="0" max="1000" required />
+            step="0.01" required />
         </ComboBox>
       </InputLabel>
     </div>
@@ -457,6 +486,12 @@ export default {
 
       <InputLabel label-text="Enable" v-model:toggle-value="repeatShift">
         <div v-if="repeatShift" class="repeat-inputs">
+          <div class="repeat-quick-btns">
+            <button type="button" class="repeat-btn" @click="setRepeatPreset('1d')">1 day</button>
+            <button type="button" class="repeat-btn" @click="setRepeatPreset('1w')">1 week</button>
+            <button type="button" class="repeat-btn" @click="setRepeatPreset('1m')">1 month</button>
+            <button type="button" class="repeat-btn" @click="setRepeatPreset('custom')">Custom</button>
+          </div>
           <fieldset class="repeat-every">
             <legend>Repeat Every</legend>
             <label for="repeat-day" id="repeat-day-label">
@@ -662,7 +697,7 @@ form {
 
 .add-item-btn {
   background: transparent;
-  border: 1.5px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
+  border: 2px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
   box-shadow: none;
   color: var(--primary-color);
   font-weight: bold;
@@ -683,6 +718,28 @@ form {
   display: flex;
   flex-direction: column;
   gap: var(--padding);
+}
+
+.repeat-quick-btns {
+  display: flex;
+  gap: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.repeat-btn {
+  background: var(--input-background-color);
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  border-radius: 4px;
+  padding: 0.2em 0.8em;
+  font-size: 0.95em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.repeat-btn:hover {
+  background: var(--primary-color);
+  color: var(--text-color-black);
 }
 
 .repeat-every {
