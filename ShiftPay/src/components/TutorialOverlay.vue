@@ -150,7 +150,7 @@ const STEPS: TutorialStep[] = [
   // Step 14: Login button
   {
     target: '#menu-login-btn',
-    message: 'Sync your data',
+    message: 'Sync your data (Under testing)',
     subText: 'Log in to back up your shifts and access them from any device.',
     type: 'closing',
     position: 'bottom'

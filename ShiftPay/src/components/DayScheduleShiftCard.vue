@@ -1,6 +1,8 @@
 <script lang="ts">
 import Shift from '@/models/Shift';
 
+import ButtonConfirm from '@/components/ButtonConfirm.vue';
+
 import { currencyFormat, toTimeStr } from '@/utils';
 
 export default {
@@ -16,6 +18,10 @@ export default {
   },
 
   emits: ['edit-shift'],
+
+  components: {
+    ButtonConfirm
+  },
 
   methods: {
     currencyFormat,
@@ -64,45 +70,27 @@ export default {
       <summary>
         <div class="workplace" title="Workplace">{{ shift.workplace }}</div>
 
-        <div class="billable-duration" title="Billable Duration">
-          {{ shift.billableDuration?.format('short') ?? 'error' }}
-          <img width="48" height="48" src="https://img.icons8.com/fluency/48/time-card.png" alt="time-card"
-            class="inline-icon" />
-        </div>
+        <div class="main">
+          <div class="billable-duration" title="Billable Duration">
+            {{ shift.billableDuration?.format() ?? 'error' }}
+          </div>
 
-        <div class="income" title="Income">
-          <img width="48" height="48" src="https://img.icons8.com/fluency/48/cash--v1.png" alt="cash--v1"
-            class="inline-icon" />
-          {{ shift.income === undefined ? 'error' : currencyFormat(shift.income) }}
-        </div>
+          <div class="pay-rate" title="Pay Rate">× {{ currencyFormat(shift.payRate) }}/h =</div>
 
-        <div class="unpaid-breaks" title="Total Unpaid Break Duration">
-          {{ shift.totalBreakDuration.format('short') }}
-          <img width="48" height="48" src="https://img.icons8.com/fluency/48/tea.png" alt="tea" class="inline-icon" />
+          <div class="income" title="Income">
+            {{ shift.income === undefined ? 'error' : currencyFormat(shift.income) }}
+          </div>
         </div>
       </summary>
 
-      <div class="details">
-        <div class="info">
-          <div class="others">
-            <div class="hourly-rate" title="Hourly Rate">{{ currencyFormat(shift.payRate) }}/hr</div>
-          </div>
+      <div class="others">
+        <div v-if="shift.totalBreakDuration.totalMinutes" class="unpaid-breaks" title="Total Unpaid Break Duration">
+          + {{ shift.totalBreakDuration.format(undefined, 'always') }} 💤
+        </div>
 
-          <div class="times">
-            <div v-for="(breakTime, index) in shift.unpaidBreaks" :key="index">
-              <div>
-                {{ breakTime.format('short') }}
-                <img width="48" height="48" src="https://img.icons8.com/fluency/48/tea.png" alt="tea"
-                  class="inline-icon" />
-              </div>
-            </div>
-
-            <div class="shift-duration" title="Shift Duration (including breaks)">
-              {{ shift.duration.format('short') }}
-              <img width="48" height="48" src="https://img.icons8.com/fluency/48/clock.png" alt="clock"
-                class="inline-icon" />
-            </div>
-          </div>
+        <div v-if="shift.totalBreakDuration.totalMinutes" class="shift-duration"
+          title="Shift Duration (including breaks)">
+          = {{ shift.duration.format(undefined, 'always') }}
         </div>
 
         <div class="actions">
@@ -129,6 +117,7 @@ export default {
   border-radius: var(--border-radius);
   box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.5);
   transition: all 0.3s;
+  overflow: visible;
 }
 
 .shift:hover,
@@ -138,6 +127,7 @@ export default {
 
 .divider {
   align-self: stretch;
+  min-width: var(--divider-width);
   width: var(--divider-width);
   /* border-radius: var(--divider-border-radius); */
   background: var(--primary-color);
@@ -145,6 +135,7 @@ export default {
 
 .datetime {
   /* using props and v-bind cause DaySchedule to update */
+  min-width: var(--datetime-width);
   width: var(--datetime-width);
   display: flex;
   flex-direction: column;
@@ -181,16 +172,9 @@ export default {
 }
 
 .info summary {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    'workplace billable-duration'
-    'income   unpaid-breaks';
+  display: flex;
+  flex-direction: column;
   gap: var(--padding);
-  justify-items: stretch;
-  justify-content: stretch;
-  align-items: center;
-  align-content: space-between;
   background-color: light-dark(white, var(--input-background-color));
   padding: var(--padding);
   border-radius: 0 var(--border-radius) var(--border-radius) 0;
@@ -198,77 +182,52 @@ export default {
   cursor: pointer;
 }
 
-.info summary>* {
-  text-wrap: balance;
-  text-wrap: pretty;
-  word-break: break-word;
-  overflow-wrap: break-word;
+.info .main {
   display: flex;
   flex-direction: row;
-  justify-content: flex-start;
+  align-items: center;
   gap: var(--padding-small);
 }
 
-.info summary>*:nth-child(2n) {
-  text-align: right;
-  justify-content: flex-end;
-}
-
-.info summary .workplace {
-  grid-area: workplace;
+.info .workplace {
   font-weight: bold;
+  color: var(--text-color);
 }
 
-.info summary .income {
-  grid-area: income;
+.info .billable-duration {
+  color: light-dark(#0088ff, #64b6ff);
+  background: rgba(0, 111, 222, 0.2);
+  padding: var(--padding-small) var(--padding);
+  border-radius: 999px;
 }
 
-.info summary .billable-duration {
-  grid-area: billable-duration;
+.info .income {
+  color: light-dark(#00c600, #64ff64);
+  background: rgba(0, 222, 0, 0.2);
+  padding: var(--padding-small) var(--padding);
+  border-radius: 999px;
+  transition: all var(--transition-duration);
 }
 
-.info summary .unpaid-breaks {
-  grid-area: unpaid-breaks;
+.info .pay-rate {
+  display: none;
 }
 
-.details {
-  padding: var(--padding);
-  border-radius: 0 0 var(--border-radius) 0;
+.info:open .pay-rate {
+  display: initial;
+}
+
+.info summary,
+.info .unpaid-breaks,
+.info .shift-duration {
+  color: var(--text-color-faded);
+  white-space: nowrap;
+}
+
+.info .others {
   display: flex;
   flex-direction: column;
   gap: var(--padding-small);
-}
-
-.details .info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-
-.details .info>* {
-  text-wrap: balance;
-  text-wrap: pretty;
-  word-break: break-word;
-  overflow-wrap: break-word;
-  display: flex;
-  flex-direction: column;
-  justify-content: start;
-  align-items: stretch;
-  gap: var(--padding);
-}
-
-.details .info .times {
-  text-align: right;
-}
-
-.details .actions {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  gap: var(--padding);
-}
-
-.details .actions>* {
-  flex: 1;
-  box-shadow: none;
+  margin: var(--padding);
 }
 </style>
