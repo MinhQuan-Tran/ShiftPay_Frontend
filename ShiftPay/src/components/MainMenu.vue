@@ -80,7 +80,10 @@ export default {
 
     <span class="menu-heading">Display</span>
     <button class="menu-item" @click="$emit('toggle-legends')">
-      <span class="menu-icon">{{ showLegends ? '👁' : '🚫' }}</span>
+      <span class="menu-icon">
+        <img v-if="showLegends" class="inline-icon" src="https://img.icons8.com/fluency/96/visible.png" alt="visible">
+        <img v-else class="inline-icon" src="https://img.icons8.com/fluency/96/blind.png" alt="hidden">
+      </span>
       <span class="menu-label">{{ showLegends ? 'Hide' : 'Show' }} Legends</span>
     </button>
 
