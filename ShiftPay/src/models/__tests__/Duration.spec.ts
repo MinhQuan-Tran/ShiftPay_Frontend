@@ -98,6 +98,22 @@ describe('Duration', () => {
     });
   });
 
+  describe('totalMinutes', () => {
+    it('calculates hours*60 + minutes', () => {
+      const d = new Duration({ hours: 2, minutes: 30 });
+      expect(d.totalMinutes).toBe(150);
+    });
+
+    it('reflects normalized minutes', () => {
+      const d = new Duration({ hours: 1, minutes: 90 });
+      expect(d.totalMinutes).toBe(150);
+    });
+
+    it('is 0 for empty duration', () => {
+      expect(new Duration().totalMinutes).toBe(0);
+    });
+  });
+
   describe('static add', () => {
     it('adds two durations without overflow', () => {
       const result = Duration.add(new Duration({ hours: 1, minutes: 20 }), new Duration({ hours: 2, minutes: 10 }));

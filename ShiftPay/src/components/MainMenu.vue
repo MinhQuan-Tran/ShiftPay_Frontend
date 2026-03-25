@@ -60,7 +60,7 @@ export default {
 
     <hr class="menu-divider" />
 
-    <span class="menu-heading">Account</span>
+    <span class="menu-heading">Account (Beta)</span>
     <button v-if="!authStore.isAuthenticated" id="menu-login-btn" class="menu-item" @click="handleLogin">
       <span class="menu-icon">
         <img class="inline-icon" src="https://img.icons8.com/fluency/96/enter-2.png" alt="login" />
