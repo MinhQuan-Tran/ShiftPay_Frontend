@@ -66,6 +66,10 @@ export default class Duration {
     return this._minutes ?? 0;
   }
 
+  get totalMinutes(): number {
+    return this.hours * 60 + this.minutes;
+  }
+
   set hours(hours: number | undefined) {
     if (hours === undefined) {
       this._hours = undefined;

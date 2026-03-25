@@ -189,7 +189,7 @@ export default {
 
   <WeekSchedule v-model:selected-range="selectedRange" :show-legends="showLegends" />
   <hr />
-  <DaySchedule :selected-range="selectedRange" :show-legends="showLegends" />
+  <DaySchedule :selected-range="selectedRange" />
 
   <ChangelogDialog ref="changelog-dialog" />
   <TutorialOverlay ref="tutorial" />
