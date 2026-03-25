@@ -118,8 +118,8 @@ export default {
   background: light-dark(rgba(255, 255, 255, 0.5), rgba(18, 18, 18, 0.42));
   border: 1px solid light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.16));
   transform-origin: top right;
-  backdrop-filter: blur(32px) saturate(140%);
-  -webkit-backdrop-filter: blur(32px) saturate(140%);
+  backdrop-filter: blur(50px) saturate(140%);
+  -webkit-backdrop-filter: blur(50px) saturate(140%);
 }
 
 /* Vue Transition for menu open/close */
@@ -145,8 +145,8 @@ export default {
 /* ── Section headings ── */
 .menu-heading {
   padding: 0.5em 1em 0.25em;
-  font-size: 0.7em;
-  font-weight: 700;
+  font-size: small;
+  font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-color-faded);
@@ -167,19 +167,17 @@ export default {
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 0.7em;
-  padding: 0.6em 1em;
+  gap: 0.3em;
   margin: 0 0.4em;
   border: none;
   border-radius: 8px;
   background: transparent;
   color: var(--text-color);
   font-weight: 500;
-  font-size: 0.95em;
+  font-size: 0.85em;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition: all var(--transition-duration) ease;
   box-shadow: none;
-  line-height: 1.4;
   text-align: left;
   justify-content: flex-start;
 }
@@ -207,7 +205,6 @@ export default {
   justify-content: center;
   width: 1.6em;
   height: 1.6em;
-  font-size: 1.05em;
   flex-shrink: 0;
   border-radius: 6px;
   background: transparent;
