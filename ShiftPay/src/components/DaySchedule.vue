@@ -438,8 +438,8 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  margin: var(--padding) 0;
-  gap: calc(var(--padding) * 2);
+  margin: calc(var(--padding) * 1.5) 0;
+  gap: calc(var(--padding) * 1.5);
 }
 
 .shift-list:has(.info[open]) .shift:not(:has(.info[open]), :hover) {
