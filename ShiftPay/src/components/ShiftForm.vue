@@ -168,6 +168,14 @@ export default {
               const repeatMonth = Number((this.$refs['repeat-month'] as HTMLInputElement)?.value) || 0;
               const repeatYear = Number((this.$refs['repeat-year'] as HTMLInputElement)?.value) || 0;
 
+              if (repeatDay === 0 && repeatMonth === 0 && repeatYear === 0) {
+                const repeatDay = this.$refs['repeat-day'] as HTMLFieldSetElement;
+
+                repeatDay.setCustomValidity('Please enter a valid repeat interval.');
+                repeatDay.reportValidity();
+                return false;
+              }
+
               const repeatEndDate = new Date(
                 (this.$refs['repeat-end-date'] as HTMLInputElement)?.value ?? shift!.startTime
               );
@@ -716,22 +724,6 @@ form {
   display: flex;
   flex-direction: column;
   gap: var(--padding);
-}
-
-.repeat-btn {
-  background: var(--input-background-color);
-  border: 1px solid var(--primary-color);
-  color: var(--primary-color);
-  border-radius: 4px;
-  padding: 0.2em 0.8em;
-  font-size: 0.95em;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.repeat-btn:hover {
-  background: var(--primary-color);
-  color: var(--text-color-black);
 }
 
 .repeat-every {
