@@ -6,7 +6,12 @@ export default {
       type: String,
       default: 'to-right',
       validator: (val: string) => ['to-left', 'to-right'].includes(val)
-    }
+    },
+
+    preventSubmit: {
+      type: Boolean,
+      default: false
+    },
   },
 
   data() {
@@ -82,13 +87,20 @@ export default {
       document.removeEventListener('pointercancel', this.pointerup);
     },
 
-    handleClick() {
+    handleClick(event: Event) {
       if (!this.confirmed) {
-        return;
+        return event.preventDefault(); // Prevent default click action if not confirmed
       }
 
       this.confirmed = false;
       this.$emit('click');
+
+      // For submit buttons
+      if (this.preventSubmit) {
+        event.preventDefault();
+      } else {
+        return true;
+      }
     }
   },
 
@@ -103,12 +115,14 @@ export default {
       {{ direction == "to-left" ? "←" : "" }}
       Slide to confirm
       {{ direction == "to-right" ? "→" : "" }}</span>
-    <button ref="button" class="button-confirm" v-bind="$attrs" @pointerdown="pointerdown"
-      @click.stop.prevent="handleClick" @touchstart.prevent @dragstart.prevent>
+    <button ref="button" class="button-confirm" v-bind="$attrs" @pointerdown="pointerdown" @click.stop="handleClick"
+      @touchstart.prevent @dragstart.prevent readonly>
       <slot></slot>
     </button>
   </div>
 </template>
+
+<!-- NOT WORKING WITH CLEAR SHIFT FORM -->
 
 <style scoped>
 .slider {

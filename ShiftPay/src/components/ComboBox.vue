@@ -98,7 +98,7 @@ export default {
           {{ itemName }}
 
           <ButtonConfirm v-if="deletable" class="delete-btn danger" direction="to-left" @isHolding="setHoldingDelete"
-            @click="handleDelete(itemName)" @mousedown.stop @pointerdown.stop style="margin-left:auto;">
+            @click="handleDelete(itemName)" preventSubmit @mousedown.stop @pointerdown.stop style="margin-left:auto;">
             <div class="icons8-close"></div>
           </ButtonConfirm>
         </div>
