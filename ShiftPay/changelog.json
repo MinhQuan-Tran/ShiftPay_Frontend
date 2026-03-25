@@ -166,5 +166,12 @@
       "[Feature] Add interactive tutorial",
       "Improve user interface and experience"
     ]
+  },
+  {
+    "version": "0.4.3",
+    "date": "2026-03-25T00:00:00+1100",
+    "changes": [
+      "Improve user interface and experience"
+    ]
   }
 ]

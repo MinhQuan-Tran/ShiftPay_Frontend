@@ -1,5 +1,7 @@
 <script lang="ts">
+import ButtonConfirm from './ButtonConfirm.vue';
 export default {
+  components: { ButtonConfirm },
   props: {
     value: String,
     list: Array<String>,
@@ -11,11 +13,16 @@ export default {
 
   emits: ['update:value', 'delete-item'],
 
+  data() {
+    return {
+      isHoldingDelete: false
+    };
+  },
+
   computed: {
     filteredList() {
       if (!this.value) return this.list || [];
-
-      return this.list?.filter((item) => item.toLowerCase().includes(this.value!.toLowerCase())) || [];
+      return this.list?.filter((item: String) => item.toLowerCase().includes(this.value!.toLowerCase())) || [];
     }
   },
 
@@ -37,13 +44,14 @@ export default {
         datalist.style.paddingTop = `${slot.getBoundingClientRect().height}px`;
       });
 
-      // Hide the datalist when the input is blurred
+      // Hide the datalist when the input is blurred, unless holding delete
       input.addEventListener('blur', () => {
-        // Fire the click event after the hide the datalist
-        datalist.classList.remove('show');
         setTimeout(() => {
-          comboBox.style.zIndex = '0';
-        }, 500);
+          if (!this.isHoldingDelete) {
+            datalist.classList.remove('show');
+            comboBox.style.zIndex = '0';
+          }
+        }, 10);
       });
     });
   },
@@ -51,8 +59,28 @@ export default {
   updated() {
     const datalist = this.$refs.datalist as HTMLElement;
     const slot = this.$refs.slot as HTMLElement;
-
     datalist.style.paddingTop = `${slot.getBoundingClientRect().height}px`;
+  },
+
+  methods: {
+    handleDelete(itemName: String) {
+      console.log('delete', itemName);
+      this.$emit('delete-item', itemName);
+    },
+
+    setHoldingDelete(val: boolean) {
+      this.isHoldingDelete = val;
+      // If released, and input is not focused, close datalist
+      if (!val) {
+        const input = (this.$refs.slot as HTMLDivElement).querySelector('input') as HTMLInputElement;
+        const datalist = this.$refs.datalist as HTMLDivElement;
+        const comboBox = this.$refs['combo-box'] as HTMLDivElement;
+        if (document.activeElement !== input) {
+          datalist.classList.remove('show');
+          comboBox.style.zIndex = '0';
+        }
+      }
+    }
   }
 };
 </script>
@@ -66,11 +94,13 @@ export default {
     <div ref="datalist" class="datalist">
       <div class="list">
         <div v-for="(itemName, index) in filteredList" :key="index" class="item"
-          @click="$emit('update:value', itemName)">
+          @mousedown="$emit('update:value', itemName)">
           {{ itemName }}
-          <button class="delete-btn danger" type="button" v-if="deletable" @click.stop="$emit('delete-item', itemName)">
+
+          <ButtonConfirm v-if="deletable" class="delete-btn danger" direction="to-left" @isHolding="setHoldingDelete"
+            @click="handleDelete(itemName)" preventSubmit @mousedown.stop @pointerdown.stop style="margin-left:auto;">
             <div class="icons8-close"></div>
-          </button>
+          </ButtonConfirm>
         </div>
       </div>
     </div>
@@ -86,26 +116,26 @@ export default {
 .datalist {
   position: absolute;
   top: 0;
-  left: calc(var(--border-radius) / 2);
+  left: 0;
   z-index: -1;
   border: 1px solid var(--text-color-faded);
   box-sizing: border-box;
   overflow: hidden;
-  width: calc(100% - var(--border-radius));
+  width: 100%;
   font-size: inherit;
   background-color: var(--input-background-color);
   box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.5);
   border-radius: var(--border-radius);
-  /* Small delay when closing to let the click event fire */
-  transition: all 0.3s allow-discrete 0.2s;
   transform-origin: top;
+  /* Need delay for the click event */
+  transition: all var(--transition-duration) allow-discrete 0.2s;
   transform: scaleY(0);
+  opacity: 0;
 }
 
 .datalist.show {
   transform: scaleY(1);
-  /* No delaying when showing */
-  transition: all 0.3s;
+  opacity: 1;
 }
 
 .list {
@@ -113,7 +143,6 @@ export default {
   padding: 0 var(--padding-small);
   width: 100%;
   max-height: 200px;
-  overflow-y: auto;
 }
 
 .list .item {
@@ -124,6 +153,7 @@ export default {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+  align-items: center;
   gap: 1em;
   text-wrap: balance;
   text-wrap: pretty;

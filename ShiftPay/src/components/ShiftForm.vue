@@ -36,7 +36,7 @@ export default {
       formData: deepClone<Partial<Shift>>(this.shift),
       saveShiftTemplate: false,
       deleteShiftTemplate: false,
-      recurringShift: false,
+      repeatPreset: 'none',
       templateName: '',
       hiddenElements: [] as Element[], // Elements to hide when holding a button in action bar
       currentAction: '', // Track the current action being performed for loading state
@@ -59,6 +59,40 @@ export default {
   },
 
   methods: {
+    setRepeatPreset(preset: 'none' | '1d' | '1w' | '1m' | 'custom') {
+      // Set repeat fields for radio buttons
+      const dayInput = this.$refs['repeat-day'] as HTMLInputElement | undefined;
+      const monthInput = this.$refs['repeat-month'] as HTMLInputElement | undefined;
+      const yearInput = this.$refs['repeat-year'] as HTMLInputElement | undefined;
+      if (!dayInput || !monthInput || !yearInput) return;
+      switch (preset) {
+        case 'none':
+          dayInput.value = '0';
+          monthInput.value = '0';
+          yearInput.value = '0';
+          break;
+        case '1d':
+          dayInput.value = '1';
+          monthInput.value = '0';
+          yearInput.value = '0';
+          break;
+        case '1w':
+          dayInput.value = '7';
+          monthInput.value = '0';
+          yearInput.value = '0';
+          break;
+        case '1m':
+          dayInput.value = '0';
+          monthInput.value = '1';
+          yearInput.value = '0';
+          break;
+        case 'custom':
+          // Do not change values
+          break;
+      }
+      this.repeatPreset = preset;
+    },
+
     // Cannot use alert directly on event
     alert(message: string) {
       alert(message);
@@ -128,33 +162,41 @@ export default {
             const newShifts: Shift[] = [];
             newShifts.push(shift);
 
-            // Handle recurring shifts
-            if (this.recurringShift) {
-              const recurringDay = Number((this.$refs['recurring-day'] as HTMLInputElement)?.value);
-              const recurringMonth = Number((this.$refs['recurring-month'] as HTMLInputElement)?.value);
-              const recurringYear = Number((this.$refs['recurring-year'] as HTMLInputElement)?.value);
+            // Handle repeat shifts
+            if (this.repeatPreset !== 'none') {
+              const repeatDay = Number((this.$refs['repeat-day'] as HTMLInputElement)?.value) || 0;
+              const repeatMonth = Number((this.$refs['repeat-month'] as HTMLInputElement)?.value) || 0;
+              const repeatYear = Number((this.$refs['repeat-year'] as HTMLInputElement)?.value) || 0;
 
-              const recurringEndDate = new Date(
-                (this.$refs['recurring-end-date'] as HTMLInputElement)?.value ?? shift!.startTime
+              if (repeatDay === 0 && repeatMonth === 0 && repeatYear === 0) {
+                const repeatDay = this.$refs['repeat-day'] as HTMLFieldSetElement;
+
+                repeatDay.setCustomValidity('Please enter a valid repeat interval.');
+                repeatDay.reportValidity();
+                return false;
+              }
+
+              const repeatEndDate = new Date(
+                (this.$refs['repeat-end-date'] as HTMLInputElement)?.value ?? shift!.startTime
               );
-              recurringEndDate.setHours(23, 59, 59, 999);
+              repeatEndDate.setHours(23, 59, 59, 999);
 
               const duration = shift!.endTime.getTime() - shift!.startTime.getTime();
 
               for (
                 const currentFromDate = new Date(shift!.startTime);
-                currentFromDate < recurringEndDate;
+                currentFromDate < repeatEndDate;
                 // Skip the first shift as it's already added
               ) {
-                // Increment the currentFromDate by the recurring interval
-                currentFromDate.setDate(currentFromDate.getDate() + recurringDay);
-                currentFromDate.setMonth(currentFromDate.getMonth() + recurringMonth);
-                currentFromDate.setFullYear(currentFromDate.getFullYear() + recurringYear);
+                // Increment the currentFromDate by the repeat interval
+                currentFromDate.setDate(currentFromDate.getDate() + repeatDay);
+                currentFromDate.setMonth(currentFromDate.getMonth() + repeatMonth);
+                currentFromDate.setFullYear(currentFromDate.getFullYear() + repeatYear);
 
                 const start = new Date(currentFromDate);
                 const end = new Date(currentFromDate.getTime() + duration);
 
-                const recurringShift = new Shift({
+                const repeatShift = new Shift({
                   workplace: shift!.workplace,
                   payRate: shift!.payRate,
                   startTime: start,
@@ -162,7 +204,7 @@ export default {
                   unpaidBreaks: shift!.unpaidBreaks
                 });
 
-                newShifts.push(recurringShift);
+                newShifts.push(repeatShift);
               }
             }
 
@@ -325,15 +367,11 @@ export default {
       <InputLabel label-text="Shift Templates" v-model:toggle-value="deleteShiftTemplate"
         toggle-color="var(--danger-color)" sub-text="Delete" :loading="shiftTemplatesStore.status === STATUS.Loading">
         <div class="shift-templates">
-          <button v-for="[name, template] in shiftTemplatesStore.templates" :key="name"
+          <input v-for="[name, template] in shiftTemplatesStore.templates" :key="name" :value="name"
             @click="deleteShiftTemplate ? shiftTemplatesStore.delete(name) : quickAddShift(template.shift as Shift)"
-            type="button" :class="['template-chip', { 'template-chip--delete': deleteShiftTemplate }]">
-            <span class="template-chip-name">{{ name }}</span>
-          </button>
-          <button type="button" :class="['template-chip template-chip--add', { active: saveShiftTemplate }]"
-            id="save-shift-template-btn" @click="saveShiftTemplate = !saveShiftTemplate">
-            <span class="template-chip-name">+</span>
-          </button>
+            type="button" :class="['chip btn', { 'delete': deleteShiftTemplate }]" />
+          <input type="button" :class="['btn add-item-btn', { active: saveShiftTemplate }]" value="+"
+            id="save-shift-template-btn" @click="saveShiftTemplate = !saveShiftTemplate" />
         </div>
       </InputLabel>
 
@@ -370,7 +408,7 @@ export default {
           @delete-item="payRate => formData.workplace ? workInfosStore.delete(formData.workplace, Number(payRate)).catch((error) => alert('Failed to delete pay rate \n' + error.message)) : null"
           deletable>
           <input type="number" id="pay-rate" name="payRate" placeholder="e.g. 23.23" v-model="formData.payRate"
-            step="0.01" min="0" max="1000" required />
+            step="0.01" required />
         </ComboBox>
       </InputLabel>
     </div>
@@ -447,30 +485,53 @@ export default {
         </div>
 
         <!-- Add unpaid break -->
-        <button type="button" class="add-row-btn" @click="addUnpaidBreak">+ Add Break</button>
+        <button type="button" class="add-item-btn" @click="addUnpaidBreak">+</button>
       </div>
     </div>
 
-    <!-- ── Recurring ── -->
+    <!-- ── Repeat (Recurring) ── -->
     <div v-if="action === 'add' || action === 'check in/out'" class="form-section">
-      <span class="section-label">Recurring</span>
+      <span class="section-label">Repeat</span>
 
-      <InputLabel label-text="Enable" for-id="recurring" v-model:toggle-value="recurringShift">
-        <div v-if="recurringShift" class="recurring-inputs">
-          <span>Shift repeat every:</span>
-          <input type="number" ref="recurring-day" id="recurring-day" name="recurringDay" placeholder="Day" min="0"
-            max="31" />
-          <input type="number" ref="recurring-month" id="recurring-month" name="recurringMonth" placeholder="Month"
-            min="0" max="12" />
-          <input type="number" ref="recurring-year" id="recurring-year" name="recurringYear" placeholder="Year"
-            min="0" />
-          <input type="date" ref="recurring-end-date" id="recurring-end-date" name="recurringEndDate" required />
+      <div class="repeat-inputs">
+        <div class="repeat-quick-btns" role="radiogroup" aria-label="Repeat Presets">
+          <label v-for="preset in [
+            { val: 'none', label: 'None' },
+            { val: '1d', label: 'Daily' },
+            { val: '1w', label: 'Weekly' },
+            { val: '1m', label: 'Monthly' },
+            { val: 'custom', label: 'Custom' }
+          ]" :key="preset.val" class="chip btn repeat-chip" :class="{ active: repeatPreset === preset.val }"
+            tabindex="0">
+            <input type="radio" name="repeat-preset" :value="preset.val" v-model="repeatPreset"
+              @change="setRepeatPreset(preset.val as 'none' | '1d' | '1w' | '1m' | 'custom')" style="display:none;" />
+            <span class="name">{{ preset.label }}</span>
+          </label>
         </div>
-      </InputLabel>
-    </div>
 
-    <!-- ── Actions ── -->
-    <div class="action-divider"></div>
+        <fieldset v-if="repeatPreset === 'custom'" class="repeat-every">
+          <legend>Repeat Every</legend>
+          <label for="repeat-day" id="repeat-day-label">
+            Day(s)
+            <input type="number" ref="repeat-day" id="repeat-day" name="repeatDay" placeholder="Day" min="0" max="31" />
+          </label>
+          <label for="repeat-month" id="repeat-month-label">
+            Month(s)
+            <input type="number" ref="repeat-month" id="repeat-month" name="repeatMonth" placeholder="Month" min="0"
+              max="12" />
+          </label>
+          <label for="repeat-year" id="repeat-year-label">
+            Year(s)
+            <input type="number" ref="repeat-year" id="repeat-year" name="repeatYear" placeholder="Year" min="0" />
+          </label>
+        </fieldset>
+
+        <label v-if="repeatPreset != 'none'" for="repeat-end-date" id="repeat-end-date-label">
+          End Date
+          <input type="date" ref="repeat-end-date" id="repeat-end-date" name="repeatEndDate" required />
+        </label>
+      </div>
+    </div>
 
     <div ref="actionBar" class="actions">
       <!-- Edit -->
@@ -522,7 +583,7 @@ export default {
 
 <style scoped>
 form {
-  gap: 0.6em;
+  gap: calc(var(--padding) * 2);
   position: relative;
 }
 
@@ -545,9 +606,12 @@ form {
 }
 
 /* ── Shift template chips ── */
-.shift-templates {
+.shift-templates,
+.repeat-quick-btns {
   position: relative;
   display: flex;
+  height: fit-content;
+  box-sizing: border-box;
   overflow-x: auto;
   white-space: nowrap;
   gap: 0.5em;
@@ -555,42 +619,42 @@ form {
   -webkit-overflow-scrolling: touch;
 }
 
-.template-chip {
-  background: var(--input-background-color);
+.chip {
+  min-width: fit-content;
+  background-color: light-dark(rgba(255, 255, 255, 0.55), rgba(24, 24, 24, 0.75)) !important;
+  cursor: pointer;
+  transition: outline var(--transition-duration);
+  outline: 2px solid var(--input-background-color);
+  font-size: small;
+  font-weight: bold;
+  height: 3em;
+  box-sizing: border-box;
+  padding: var(--padding-small) calc(var(--padding) * 2);
 }
 
-.template-chip:active {
+.chip:focus,
+.chip:hover {
+  outline-color: var(--text-color-faded);
+}
+
+.chip:has(input[type='radio']:checked) {
+  outline-color: var(--primary-color);
+}
+
+.chip:active {
+  outline-color: var(--primary-color);
   transform: scale(0.97);
 }
 
-.template-chip--delete {
+.chip.delete {
   outline: 2px dashed var(--danger-color);
   outline-offset: -1.5px;
 }
 
-.template-chip--delete:hover {
+.chip--delete:hover {
   outline: 2px solid var(--danger-color);
   background: var(--danger-color);
   opacity: 1;
-}
-
-.template-chip--add {
-  background: transparent;
-  border: 1.5px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
-  color: var(--primary-color);
-  box-shadow: none;
-  min-width: 32px;
-}
-
-.template-chip--add:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-  background: transparent;
-}
-
-.template-chip-name {
-  font-size: 0.85em;
-  font-weight: 600;
 }
 
 #save-shift-template-btn.active,
@@ -637,97 +701,40 @@ form {
   box-shadow: none;
 }
 
-.add-row-btn {
+.add-item-btn {
   background: transparent;
-  border: 1.5px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
+  border: 2px dashed light-dark(rgba(71, 172, 255, 0.4), rgba(71, 172, 255, 0.35));
   box-shadow: none;
   color: var(--primary-color);
-  font-weight: 600;
-  font-size: 0.85em;
-  border-radius: 8px;
-  padding: 0.5em;
+  font-weight: bold;
+  font-size: larger;
+  padding: 0;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.add-row-btn:hover {
+.add-item-btn:hover {
   border-color: var(--primary-color);
   color: var(--primary-color);
   box-shadow: none;
   opacity: 1;
 }
 
-/* ── Recurring ── */
-.recurring-inputs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: auto;
-  grid-template-areas:
-    'text text text text'
-    'day month year year'
-    'end-date end-date end-date end-date';
-  gap: var(--padding-small);
+/* ── Repeat ── */
+.repeat-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--padding);
 }
 
-.recurring-inputs span {
-  grid-area: text;
-  font-size: 0.85em;
-  color: var(--text-color-faded);
+.repeat-every {
+  display: flex;
+  flex-direction: row;
+  gap: var(--padding);
+  border-radius: var(--border-radius);
 }
 
-.recurring-inputs input#recurring-day {
-  grid-area: day;
-}
-
-.recurring-inputs input#recurring-month {
-  grid-area: month;
-}
-
-.recurring-inputs input#recurring-year {
-  grid-area: year;
-}
-
-.recurring-inputs input#recurring-end-date {
-  grid-area: end-date;
-}
-
-/* ── Action divider ── */
-.action-divider {
-  height: 1px;
-  background: light-dark(rgba(71, 172, 255, 0.15), rgba(71, 172, 255, 0.12));
-}
-
-/* ── Action bar ── */
-.actions {
-  transition: all 0.3s ease;
-}
-
-.actions>* {
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.actions button {
-  flex: 1;
-  transition: all 0.3s ease;
-  border-radius: 10px;
-  padding: 0.6em 1em;
-}
-
-.actions .danger {
-  flex-grow: 0;
-}
-
-.actions:has(.focus) {
-  gap: 0;
-}
-
-.actions:has(.focus)>*:not(.focus) {
-  max-width: 0;
-  padding: 0;
-}
-
-.actions .focus {
-  flex-grow: 1 !important;
+.repeat-every #repeat-year {
+  flex: 2;
 }
 
 /* ── Spinner ── */
@@ -749,11 +756,6 @@ form {
   }
 }
 
-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
 /* ── Mobile optimizations ── */
 input[type='datetime-local'] {
   min-width: 0;
@@ -764,18 +766,8 @@ input[type='datetime-local'] {
     padding: 0.2em 0.2em 0.2em 0.5em;
   }
 
-  .template-chip {
-    min-width: 60px;
-    padding: 0.35em 0.6em;
-  }
-
   .template-chip-name {
     font-size: 0.8em;
-  }
-
-  .actions button {
-    padding: 0.5em 0.6em;
-    font-size: 0.9em;
   }
 }
 </style>

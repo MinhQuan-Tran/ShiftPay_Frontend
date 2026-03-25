@@ -7,9 +7,9 @@
   --danger-color: #ff6464;
   --success-color: #64ff64;
 
-  --background-color: light-dark(#fafafa, #272727);
+  --background-color: light-dark(#ffffff, #272727);
   --popup-background-color: light-dark(#fff, #303030);
-  --input-background-color: light-dark(#e6e6e6, #414141);
+  --input-background-color: light-dark(#dbdbdb, #414141);
   --button-color: light-dark(#ededed, #545454);
   --text-color-white: #fff;
   --text-color-black: #000;
@@ -23,6 +23,8 @@
 
   --padding: 0.5em;
   --padding-small: 0.3em;
+
+  --transition-duration: 0.25s;
 }
 
 * {
@@ -74,26 +76,20 @@ form {
   align-items: stretch;
 }
 
-input {
+input:not([type='checkbox'], [type='radio'], [type='button'], [type='submit'], [type='reset']) {
   font-size: large;
-}
-
-input:not([type='checkbox'], [type='radio']) {
   border: none;
-  background-color: var(--input-background-color);
+  background-color: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.07));
+  border-bottom: 2px solid var(--primary-color);
   border-radius: var(--border-radius);
   box-sizing: border-box;
   width: 100%;
   padding: var(--padding);
+  transition: all var(--transition-duration) ease-in-out;
 }
 
-input:focus,
-button:focus {
-  transition: outline 0s;
-  outline: 2px solid var(--primary-color);
-}
-
-button {
+button,
+.btn {
   position: relative;
   border: none;
   outline: none;
@@ -102,10 +98,11 @@ button {
   align-items: center;
   justify-content: center;
   border-radius: var(--border-radius);
+  min-width: 32px;
   line-height: 2em;
-  padding: 0.5em;
+  padding: var(--padding);
   font-weight: bold;
-  transition: all 0.3s ease-in-out;
+  transition: all var(--transition-duration) ease-in-out;
   background: var(--button-color);
   color: var(--text-color);
   box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.5);
@@ -113,7 +110,21 @@ button {
 
 button:hover {
   opacity: 0.8;
-  box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.8);
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+input,
+button {
+  outline: 2px solid transparent;
+}
+
+input:focus,
+button:focus {
+  outline: 2px solid var(--primary-color);
 }
 
 .primary {
@@ -162,14 +173,48 @@ button.danger {
   vertical-align: sub;
 }
 
-form .actions {
+/* Apply to all actions bars (including forms and everything else) */
+.actions {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   align-items: stretch;
   gap: var(--gap-horizontal);
-  margin-top: var(--padding);
   text-wrap: nowrap;
+  transition: all var(--transition-duration);
+}
+
+/* ── Action bar ── */
+.actions > * {
+  max-width: 100%;
+  min-width: fit-content;
+  flex: 1;
+  overflow: hidden;
+  text-wrap: nowrap;
+}
+
+.actions button {
+  flex: 1;
+  transition: all 0.3s ease;
+}
+
+.actions .danger {
+  flex-grow: 0;
+}
+
+.actions:has(.focus) {
+  gap: 0;
+}
+
+.actions:has(.focus) > *:not(.focus) {
+  flex: 0;
+  max-width: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.actions .focus {
+  flex-grow: 1 !important;
 }
 
 #app {

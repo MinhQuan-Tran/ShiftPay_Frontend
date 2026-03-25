@@ -655,7 +655,7 @@ export default {
   color: var(--text-color, #222);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
   pointer-events: auto;
-  animation: tooltip-enter 0.25s ease-out;
+  animation: tooltip-enter var(--transition-duration) ease-out;
 }
 
 .tutorial-tooltip--center {

@@ -80,7 +80,10 @@ export default {
 
     <span class="menu-heading">Display</span>
     <button class="menu-item" @click="$emit('toggle-legends')">
-      <span class="menu-icon">{{ showLegends ? '👁' : '🚫' }}</span>
+      <span class="menu-icon">
+        <img v-if="showLegends" class="inline-icon" src="https://img.icons8.com/fluency/96/visible.png" alt="visible">
+        <img v-else class="inline-icon" src="https://img.icons8.com/fluency/96/blind.png" alt="hidden">
+      </span>
       <span class="menu-label">{{ showLegends ? 'Hide' : 'Show' }} Legends</span>
     </button>
 
@@ -115,30 +118,38 @@ export default {
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.18),
     0 2px 8px rgba(0, 0, 0, 0.12);
-  animation: menu-enter 0.18s ease-out;
   background: light-dark(rgba(255, 255, 255, 0.5), rgba(18, 18, 18, 0.42));
   border: 1px solid light-dark(rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.16));
-  backdrop-filter: blur(32px) saturate(140%);
-  -webkit-backdrop-filter: blur(32px) saturate(140%);
+  transform-origin: top right;
+  backdrop-filter: blur(50px) saturate(140%);
+  -webkit-backdrop-filter: blur(50px) saturate(140%);
 }
 
-@keyframes menu-enter {
-  from {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.97);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+/* Vue Transition for menu open/close */
+.menu-fade-enter-active,
+.menu-fade-leave-active {
+  transition: all var(--transition-duration) ease;
 }
+
+.menu-fade-enter-from,
+.menu-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.97, 0.8);
+}
+
+.menu-fade-enter-to,
+.menu-fade-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1, 1);
+}
+
+
 
 /* ── Section headings ── */
 .menu-heading {
   padding: 0.5em 1em 0.25em;
-  font-size: 0.7em;
-  font-weight: 700;
+  font-size: small;
+  font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-color-faded);
@@ -159,19 +170,17 @@ export default {
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 0.7em;
-  padding: 0.6em 1em;
+  gap: 0.3em;
   margin: 0 0.4em;
   border: none;
   border-radius: 8px;
   background: transparent;
   color: var(--text-color);
   font-weight: 500;
-  font-size: 0.95em;
+  font-size: 0.85em;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition: all var(--transition-duration) ease;
   box-shadow: none;
-  line-height: 1.4;
   text-align: left;
   justify-content: flex-start;
 }
@@ -199,7 +208,6 @@ export default {
   justify-content: center;
   width: 1.6em;
   height: 1.6em;
-  font-size: 1.05em;
   flex-shrink: 0;
   border-radius: 6px;
   background: transparent;

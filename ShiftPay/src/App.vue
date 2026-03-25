@@ -33,6 +33,19 @@ export default {
   },
 
   methods: {
+    handleClickOutside(event: MouseEvent) {
+      if (!this.menuOpened) return;
+      const menuBtn = this.$refs['menu-btn'] as HTMLDivElement;
+      const menu = this.$refs.mainMenu && (this.$refs.mainMenu as any).$el;
+      if (
+        menu &&
+        !menu.contains(event.target as Node) &&
+        !menuBtn.contains(event.target as Node)
+      ) {
+        this.menuOpened = false;
+      }
+    },
+
     showSyncDialog() {
       console.log('Showing sync dialog');
       (this.$refs['sync-dialog'] as any).showModal();
@@ -144,6 +157,11 @@ export default {
     if (localStorage.getItem('tutorialCompleted') !== 'true') {
       this.$nextTick(() => this.startTutorial());
     }
+    // Add click-outside listener for menu
+    document.addEventListener('mousedown', this.handleClickOutside);
+  },
+  beforeUnmount() {
+    document.removeEventListener('mousedown', this.handleClickOutside);
   }
 };
 </script>
@@ -154,12 +172,15 @@ export default {
       <img src="/logo.png" alt="ShiftPay logo" class="logo" />
       <h1 class="app-title">ShiftPay</h1>
     </div>
-    <div class="menu-btn" @click="menuOpened = !menuOpened" :class="{ open: menuOpened }">
+    <div ref="menu-btn" class="menu-btn" @click="menuOpened = !menuOpened" :class="{ open: menuOpened }">
       <div class="bar"></div>
       <div class="bar"></div>
       <div class="bar"></div>
-      <MainMenu v-if="menuOpened" :show-legends="showLegends" @login="handleLogin" @import="showImportDialog" @tutorial="startTutorial"
-        @changelog="showChangelogDialog" @toggle-legends="toggleLegends"></MainMenu>
+      <Transition name="menu-fade">
+        <MainMenu v-if="menuOpened" ref="mainMenu" :show-legends="showLegends" @login="handleLogin"
+          @import="showImportDialog" @tutorial="startTutorial" @changelog="showChangelogDialog"
+          @toggle-legends="toggleLegends" />
+      </Transition>
     </div>
   </div>
 

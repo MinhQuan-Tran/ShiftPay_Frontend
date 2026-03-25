@@ -261,7 +261,7 @@ export default {
   border-radius: var(--border-radius);
   background-color: light-dark(rgba(255, 255, 255, 0.55), rgba(24, 24, 24, 0.75)) !important;
   cursor: pointer;
-  transition: outline 0.15s ease;
+  transition: outline var(--transition-duration);
   outline: 2px solid var(--input-background-color);
 }
 

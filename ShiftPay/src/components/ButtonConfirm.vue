@@ -1,6 +1,19 @@
 <script lang="ts">
 export default {
-  // WARNING: animation only works correctly when the button is in the most left position
+  // WARNING: animation only works correctly when the button is in the most left position unless direction is set
+  props: {
+    direction: {
+      type: String,
+      default: 'to-right',
+      validator: (val: string) => ['to-left', 'to-right'].includes(val)
+    },
+
+    preventSubmit: {
+      type: Boolean,
+      default: false
+    },
+  },
+
   data() {
     return {
       cursorStartX: 0, // Initial x position of the cursor when pressing down
@@ -11,7 +24,12 @@ export default {
       distanceMoved: 0
     };
   },
-  emits: ['isHolding'],
+
+  emits: [
+    'isHolding',
+    'click' // Override default click event to only emit when confirmed
+  ],
+
   methods: {
     // https://www.redblobgames.com/making-of/draggable/
 
@@ -20,11 +38,6 @@ export default {
 
       this.pointerId = event.pointerId;
       this.cursorStartX = event.clientX;
-
-      const placeholder = this.$refs.placeholder as HTMLSpanElement;
-
-      placeholder.style.transition = 'opacity 0.3s ease 0.2s';
-      placeholder.style.opacity = '0.5';
 
       // Add event listeners to the document to handle the pointer movement and release when not hovering over the button
       document.addEventListener('pointermove', this.pointermove);
@@ -47,26 +60,23 @@ export default {
       const maxDistance = slider.getBoundingClientRect().width - button.getBoundingClientRect().width;
 
       const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max);
-      this.distanceMoved = clamp(event.clientX - this.cursorStartX, 0, maxDistance);
-
-      if (this.distanceMoved == maxDistance && Date.now() - this.startHoldingTime > 300) {
-        this.confirmed = true;
+      if (this.direction === 'to-left') {
+        this.distanceMoved = clamp(this.cursorStartX - event.clientX, 0, maxDistance);
       } else {
-        this.confirmed = false;
+        this.distanceMoved = clamp(event.clientX - this.cursorStartX, 0, maxDistance);
       }
+
+      // Confirm if the button has been dragged the full distance and held for at least 300ms
+      this.confirmed = (this.distanceMoved == maxDistance && Date.now() - this.startHoldingTime > 300);
     },
 
     pointerup() {
       const button = this.$refs.button as HTMLButtonElement;
-      const placeholder = this.$refs.placeholder as HTMLSpanElement;
 
       button.click();
 
       // Reset button position
       this.distanceMoved = 0;
-
-      placeholder.style.transition = 'opacity 0.3s ease';
-      placeholder.style.opacity = '0';
 
       this.isHolding = false;
       this.$emit('isHolding', this.isHolding);
@@ -74,31 +84,45 @@ export default {
       // Remove the event listeners
       document.removeEventListener('pointermove', this.pointermove);
       document.removeEventListener('pointerup', this.pointerup);
+      document.removeEventListener('pointercancel', this.pointerup);
     },
 
     handleClick(event: Event) {
       if (!this.confirmed) {
-        return event.preventDefault();
+        return event.preventDefault(); // Prevent default click action if not confirmed
       }
 
       this.confirmed = false;
-      return true;
+      this.$emit('click');
+
+      // For submit buttons
+      if (this.preventSubmit) {
+        event.preventDefault();
+      } else {
+        return true;
+      }
     }
   },
+
   inheritAttrs: false // Pass all attributes to the button instead of the slider
 };
 </script>
 
 <template>
   <div ref="slider"
-    :class="['slider', { focus: isHolding || (typeof $attrs.class === 'string' && $attrs.class.includes('focus')) }]">
-    <span ref="placeholder" class="placeholder">Slide to confirm</span>
-    <button ref="button" class="button-confirm" v-bind="$attrs" @pointerdown="pointerdown" @click="handleClick"
-      @touchstart.prevent @dragstart.prevent>
+    :class="['slider', direction, { focus: isHolding || (typeof $attrs.class === 'string' && $attrs.class.includes('focus')) }]">
+    <span ref="placeholder" class="placeholder">
+      {{ direction == "to-left" ? "←" : "" }}
+      Slide to confirm
+      {{ direction == "to-right" ? "→" : "" }}</span>
+    <button ref="button" class="button-confirm" v-bind="$attrs" @pointerdown="pointerdown" @click.stop="handleClick"
+      @touchstart.prevent @dragstart.prevent readonly>
       <slot></slot>
     </button>
   </div>
 </template>
+
+<!-- NOT WORKING WITH CLEAR SHIFT FORM -->
 
 <style scoped>
 .slider {
@@ -123,18 +147,28 @@ export default {
   color: white;
   font-size: 0.8em;
   letter-spacing: 3px;
-  opacity: 0;
   pointer-events: none;
   text-wrap: nowrap;
+  opacity: 0;
+  transition: all var(--transition-duration) allow-discrete;
 }
 
-button {
+.slider.focus .placeholder {
+  opacity: 0.5;
+}
+
+.slider button {
   outline: none;
   user-select: none;
   transition: all 0.2s ease;
   height: 100%;
   z-index: 1;
   transform: translateX(v-bind(distanceMoved + 'px'));
+}
+
+.slider.to-left button {
+  /* Move to the left instead of right */
+  transform: translateX(v-bind(-distanceMoved + 'px'));
 }
 
 button.focus {

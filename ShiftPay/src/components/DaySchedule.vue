@@ -363,9 +363,9 @@ export default {
     </div>
 
     <div class="shift-list" id="shift-list">
-      <p v-if="selectedShifts.length === 0" class="empty-shifts-message">
-        <span class="empty-shifts-title">No shifts in this range.</span>
-        <span class="empty-shifts-detail">{{ emptyShiftMessage || 'The schedule is basically on snack break.' }}</span>
+      <p v-if="selectedShifts.length === 0" class="empty-shifts">
+        <span class="title">No shifts in this range.</span>
+        <span class="detail">{{ emptyShiftMessage || 'The schedule is basically on snack break.' }}</span>
       </p>
 
       <div v-if="selectedShifts.length > 0 && showLegends" class="icon-legend">
@@ -418,19 +418,6 @@ export default {
   align-items: stretch;
 }
 
-.actions {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: var(--gap-horizontal);
-  margin: var(--padding-small) 0;
-}
-
-.actions>* {
-  flex: 1;
-  text-wrap: nowrap;
-}
-
 .actions #clear-btn {
   flex-grow: 0;
 }
@@ -440,6 +427,7 @@ export default {
   flex-grow: 10;
 }
 
+/* For animation from Vue */
 .actions #check-in-out-btn.v-enter-from,
 .actions #check-in-out-btn.v-leave-to {
   flex-grow: 0;
@@ -450,8 +438,8 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  margin: var(--padding) 0;
-  gap: calc(var(--padding) * 2);
+  margin: calc(var(--padding) * 1.5) 0;
+  gap: calc(var(--padding) * 1.5);
 }
 
 .shift-list:has(.info[open]) .shift:not(:has(.info[open]), :hover) {
@@ -462,7 +450,7 @@ export default {
   --datetime-width: v-bind('datetimeWidth');
 }
 
-.empty-shifts-message {
+.empty-shifts {
   margin: 0;
   padding: var(--padding);
   border-radius: var(--border-radius);
@@ -472,12 +460,12 @@ export default {
   text-align: center;
 }
 
-.empty-shifts-title,
-.empty-shifts-detail {
+.empty-shifts .title,
+.empty-shifts .detail {
   display: block;
 }
 
-.empty-shifts-title {
+.empty-shifts .title {
   font-weight: bold;
   color: var(--text-color);
   margin-bottom: var(--padding-small);
