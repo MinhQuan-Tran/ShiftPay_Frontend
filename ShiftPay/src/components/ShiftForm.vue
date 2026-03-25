@@ -92,6 +92,7 @@ export default {
       }
       this.repeatPreset = preset;
     },
+
     // Cannot use alert directly on event
     alert(message: string) {
       alert(message);
@@ -761,11 +762,6 @@ form {
   to {
     transform: rotate(360deg);
   }
-}
-
-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
 }
 
 /* ── Mobile optimizations ── */
