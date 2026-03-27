@@ -167,7 +167,7 @@ export default {
 </script>
 
 <template>
-  <div class="header">
+  <header>
     <div class="brand">
       <img src="/logo.png" alt="ShiftPay logo" class="logo" />
       <h1 class="app-title">ShiftPay</h1>
@@ -182,7 +182,7 @@ export default {
           @toggle-legends="toggleLegends" />
       </Transition>
     </div>
-  </div>
+  </header>
 
   <SyncDataDialog ref="sync-dialog" @complete="handleSyncComplete" />
   <ImportDataDialog ref="import-dialog" />
@@ -196,11 +196,11 @@ export default {
 </template>
 
 <style scoped>
-.header {
+header {
   position: sticky;
   top: 12px;
   margin-bottom: 12px;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
@@ -214,7 +214,7 @@ export default {
   isolation: isolate;
 }
 
-.header::before {
+header::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -227,7 +227,7 @@ export default {
   z-index: 0;
 }
 
-.header>* {
+header>* {
   position: relative;
   z-index: 1;
 }
