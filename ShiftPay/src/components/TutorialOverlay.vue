@@ -89,20 +89,27 @@ const STEPS: TutorialStep[] = [
     position: 'top',
     inDialog: true
   },
-  // Step 7: View the shift card — Select to expand
+  // Step 7: View the shift card
+  {
+    target: '#shift-list .shift:first-child',
+    message: '🎉 Your 1st shift 🎉',
+    subText:
+      'This card shows the shift start/end times on the left.<br>The workplace, working hours (excluding breaks) and the total income are also shown.',
+    type: 'info',
+    position: 'top'
+  },
+  // Step 8: Select to expand
   {
     target: '#shift-list .shift:first-child details.info',
-    message: "Here's your shift!",
-    subText: 'Select the card to expand it for more details. Here\'s what the icons mean:<br><br>'
-      + '<img src="https://img.icons8.com/fluency/48/cash--v1.png" class="inline-icon" /> Earnings<br>'
-      + '<img src="https://img.icons8.com/fluency/48/time-card.png" class="inline-icon" /> Billable hours<br>'
-      + '<img src="https://img.icons8.com/fluency/48/tea.png" class="inline-icon" /> Unpaid break time',
+    message: 'Open your shift',
+    subText:
+      'Select the card to see pay rate, breaks, total duration, and options to edit or delete the shift.',
     type: 'interactive',
     waitForEvent: 'toggle',
     autoAdvance: true,
     position: 'top'
   },
-  // Step 8: Edit button
+  // Step 9: Edit button
   {
     target: '#shift-list .shift:first-child .actions button',
     message: 'Edit or delete your shift',
@@ -110,7 +117,7 @@ const STEPS: TutorialStep[] = [
     type: 'info',
     position: 'top'
   },
-  // Step 10: Week stats
+  // Step 11: Week stats
   {
     target: '.weekly.stats, .monthly.stats',
     message: 'Your weekly earnings',
@@ -120,7 +127,7 @@ const STEPS: TutorialStep[] = [
     autoAdvance: true,
     position: 'left'
   },
-  // Step 11: Calendar overview
+  // Step 12: Calendar overview
   {
     target: '.calendar',
     message: 'Your calendar',
@@ -128,7 +135,7 @@ const STEPS: TutorialStep[] = [
     type: 'info',
     position: 'bottom'
   },
-  // Step 12: Day schedule
+  // Step 13: Day schedule
   {
     target: '#day-schedule',
     message: 'Day schedule',
@@ -136,7 +143,7 @@ const STEPS: TutorialStep[] = [
     type: 'info',
     position: 'top'
   },
-  // Step 13: Open main menu (closing step 1) - always shown even after skip
+  // Step 14: Open main menu (closing step 1) - always shown even after skip
   {
     target: '.menu-btn',
     message: 'Open the menu',
@@ -147,7 +154,7 @@ const STEPS: TutorialStep[] = [
     autoAdvance: true,
     position: 'bottom'
   },
-  // Step 14: Login button
+  // Step 15: Login button
   {
     target: '#menu-login-btn',
     message: 'Sync your data (Under testing)',
@@ -155,7 +162,7 @@ const STEPS: TutorialStep[] = [
     type: 'closing',
     position: 'bottom'
   },
-  // Step 15: Tutorial button
+  // Step 16: Tutorial button
   {
     target: '#menu-tutorial-btn',
     message: 'Replay this tutorial',
@@ -163,7 +170,7 @@ const STEPS: TutorialStep[] = [
     type: 'closing',
     position: 'bottom'
   },
-  // Step 16: Completion
+  // Step 17: Completion
   {
     target: null,
     message: "You're all set!",
