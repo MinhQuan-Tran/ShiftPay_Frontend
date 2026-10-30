@@ -137,10 +137,17 @@ const api = {
       return createRequest(`workInfos/${id ?? ''}`, { method: 'GET' });
     },
 
-    // Create, or update a work info if id is provided and exists
+    // Merge remembered/imported details without replacing existing profile metadata.
     async createOrUpdate(workInfo: WorkInfo) {
       return createRequest('workInfos', {
         method: 'POST',
+        body: { ...workInfo.toDTO() }
+      });
+    },
+
+    async update(workInfo: WorkInfo) {
+      return createRequest(`workInfos/${encodeURIComponent(workInfo.id)}`, {
+        method: 'PUT',
         body: { ...workInfo.toDTO() }
       });
     },

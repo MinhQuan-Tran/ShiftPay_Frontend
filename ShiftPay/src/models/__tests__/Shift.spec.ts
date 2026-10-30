@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import Shift from '@/models/Shift';
+import Shift, { type ShiftParams } from '@/models/Shift';
 import Duration from '@/models/Duration';
 
 const BASE = {
@@ -10,7 +10,7 @@ const BASE = {
   endTime: new Date('2025-06-01T17:00:00')
 };
 
-function makeShift(overrides?: Partial<typeof BASE & { unpaidBreaks: Duration[] }>) {
+function makeShift(overrides?: Partial<ShiftParams>) {
   return new Shift({ ...BASE, ...overrides });
 }
 
@@ -135,6 +135,65 @@ describe('Shift', () => {
       ]);
       expect(result.shifts).toHaveLength(1);
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('work detail snapshots', () => {
+    const details = {
+      workProfileId: 'profile-1',
+      payRateId: 'rate-1',
+      position: 'Supervisor',
+      location: 'City branch',
+      payRateName: 'Weekend'
+    };
+
+    it.each(['api', 'local storage', 'template'])('preserves work details through %s serialization', (format) => {
+      const shift = makeShift(details);
+      const source = format === 'local storage'
+        ? JSON.parse(JSON.stringify(shift))
+        : { id: shift.id, ...shift.toDTO(), ...(format === 'template' ? { templateName: 'Weekend shift' } : {}) };
+
+      const restored = Shift.parse(source);
+
+      expect(restored.toDTO()).toMatchObject(details);
+      expect(restored.payRate).toBe(25);
+      expect(restored.income).toBe(200);
+    });
+
+    it('keeps saved earnings and details independent of later profile changes', () => {
+      const profile = { id: 'profile-1', position: 'Supervisor', location: 'City branch' };
+      const rate = { id: 'rate-1', name: 'Weekend', hourlyRate: 30 };
+      const shift = makeShift({
+        workProfileId: profile.id,
+        payRateId: rate.id,
+        position: profile.position,
+        location: profile.location,
+        payRateName: rate.name,
+        payRate: rate.hourlyRate
+      });
+
+      profile.position = 'Manager';
+      profile.location = 'Airport';
+      rate.name = 'Public holiday';
+      rate.hourlyRate = 50;
+
+      expect(shift.position).toBe('Supervisor');
+      expect(shift.location).toBe('City branch');
+      expect(shift.payRateName).toBe('Weekend');
+      expect(shift.payRate).toBe(30);
+      expect(shift.income).toBe(240);
+    });
+
+    it('accepts older shifts without work details', () => {
+      const restored = Shift.parse(BASE);
+      expect(restored.workProfileId).toBeUndefined();
+      expect(restored.position).toBeUndefined();
+      expect(restored.payRateName).toBeUndefined();
+      expect(restored.income).toBe(200);
+    });
+
+    it('rejects malformed work details instead of silently discarding them', () => {
+      expect(() => Shift.parse({ ...BASE, position: 42 })).toThrow('position must be a string');
     });
   });
 

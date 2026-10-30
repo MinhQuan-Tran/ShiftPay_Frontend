@@ -19,6 +19,7 @@ import SyncDataDialog from '@/components/SyncDataDialog.vue';
 import ImportDataDialog from '@/components/ImportDataDialog.vue';
 import ChangelogDialog from '@/components/ChangelogDialog.vue';
 import TutorialOverlay from '@/components/TutorialOverlay.vue';
+import WorkInfosDialog from '@/components/WorkInfosDialog.vue';
 
 export default {
   data() {
@@ -61,6 +62,11 @@ export default {
     showImportDialog() {
       this.menuOpened = false;
       (this.$refs['import-dialog'] as HTMLDialogElement).showModal();
+    },
+
+    showWorkDetails() {
+      this.menuOpened = false;
+      (this.$refs['work-details-dialog'] as InstanceType<typeof WorkInfosDialog>).showModal();
     },
 
     showChangelogDialog() {
@@ -126,7 +132,8 @@ export default {
     SyncDataDialog,
     ImportDataDialog,
     ChangelogDialog,
-    TutorialOverlay
+    TutorialOverlay,
+    WorkInfosDialog
   },
 
   async mounted() {
@@ -189,6 +196,7 @@ export default {
       <Transition name="menu-fade">
         <MainMenu v-if="menuOpened" ref="mainMenu" :show-legends="showLegends" @login="handleLogin"
           @import="showImportDialog" @tutorial="startTutorial" @changelog="showChangelogDialog"
+          @work-details="showWorkDetails"
           @toggle-legends="toggleLegends" />
       </Transition>
     </div>
@@ -196,6 +204,7 @@ export default {
 
   <SyncDataDialog ref="sync-dialog" @complete="handleSyncComplete" />
   <ImportDataDialog ref="import-dialog" />
+  <WorkInfosDialog ref="work-details-dialog" />
 
   <WeekSchedule v-model:selected-range="selectedRange" :show-legends="showLegends" />
   <hr />

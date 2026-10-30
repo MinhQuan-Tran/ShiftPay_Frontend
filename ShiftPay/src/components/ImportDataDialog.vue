@@ -24,26 +24,6 @@ function isJsonRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null;
 }
 
-function readNumberSet(value: unknown): Set<number> | null {
-  if (value === undefined) {
-    return new Set<number>();
-  }
-
-  if (!Array.isArray(value)) {
-    if (typeof value !== 'number') {
-      return null;
-    }
-
-    return new Set<number>([value]);
-  }
-
-  if (!value.every((entry) => typeof entry === 'number')) {
-    return null;
-  }
-
-  return new Set<number>(value);
-}
-
 export default {
   components: { BaseDialog },
 
@@ -220,36 +200,25 @@ export default {
       // Parse work infos (supports both array and object-map formats)
       try {
         const source = isJsonRecord(data) ? data : null;
-        const workInfosJson =
-          typeof source?.workInfos === 'string'
-            ? source.workInfos
-            : typeof source?.prevWorkInfos === 'string'
-              ? source.prevWorkInfos
-              : '{}';
-        const workInfosRaw = JSON.parse(workInfosJson) as unknown;
+        const savedWorkInfos = source?.workInfos ?? source?.prevWorkInfos ?? [];
+        const workInfosRaw: unknown = typeof savedWorkInfos === 'string' ? JSON.parse(savedWorkInfos) : savedWorkInfos;
         const entries: [string, unknown][] = Array.isArray(workInfosRaw)
-          ? workInfosRaw.map((item) => [isJsonRecord(item) && typeof item.workplace === 'string' ? item.workplace : '', item])
+          ? workInfosRaw.map((item) => {
+            const name = isJsonRecord(item) ? item.workplace ?? item._workplace : undefined;
+            return [typeof name === 'string' ? name : '', item];
+          })
           : Object.entries(isJsonRecord(workInfosRaw) ? workInfosRaw : {});
         for (const [workplace, info] of entries) {
           try {
             if (!workplace || typeof workplace !== 'string') {
               throw new Error('Missing or invalid workplace name');
             }
-            if (!isJsonRecord(info)) {
+            const details = Array.isArray(info) || typeof info === 'number' ? { payRates: info } : info;
+            if (!isJsonRecord(details)) {
               throw new Error('Invalid data format');
             }
-            const payRates = readNumberSet(info.payRates ?? info.payRate);
-            if (payRates === null) {
-              throw new Error('Invalid pay rates');
-            }
-            result.workInfos.set(
-              workplace,
-              new WorkInfo({
-                id: typeof info.id === 'string' ? info.id : crypto.randomUUID(),
-                workplace,
-                payRates
-              })
-            );
+            const workInfo = WorkInfo.parse({ ...details, workplace });
+            result.workInfos.set(workInfo.workplace, workInfo);
           } catch (error) {
             result.workInfoErrors.push(`Workplace "${workplace}": ${(error instanceof Error ? error.message : String(error))}`);
           }
@@ -298,10 +267,8 @@ export default {
         }
 
         // Import work infos
-        for (const [workplace, info] of this.parsedData.workInfos) {
-          for (const rate of info.payRates) {
-            await this.workInfosStore.add(workplace, rate);
-          }
+        for (const info of this.parsedData.workInfos.values()) {
+          await this.workInfosStore.merge(info as WorkInfo);
         }
 
         // Import check-in time
