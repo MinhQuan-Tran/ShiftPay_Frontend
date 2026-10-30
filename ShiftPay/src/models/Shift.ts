@@ -1,6 +1,14 @@
 import Duration from '@/models/Duration';
 
-export type ShiftParams = {
+export type ShiftWorkDetails = {
+  workProfileId?: string;
+  payRateId?: string;
+  position?: string;
+  location?: string;
+  payRateName?: string;
+};
+
+export type ShiftParams = ShiftWorkDetails & {
   id?: string;
   workplace: string;
   payRate: number;
@@ -13,6 +21,11 @@ export default class Shift {
   private _id: string = '';
   private _workplace: string = '';
   private _payRate: number = 0;
+  private _workProfileId?: string;
+  private _payRateId?: string;
+  private _position?: string;
+  private _location?: string;
+  private _payRateName?: string;
   private _startTime: Date = new Date();
   private _endTime: Date = new Date();
   private _unpaidBreaks?: Duration[];
@@ -57,6 +70,16 @@ export default class Shift {
     const startTime = new Date(startRaw);
     const endTime = new Date(endRaw);
 
+    const details: ShiftWorkDetails = {};
+    const record = data as Record<string, unknown>;
+    for (const key of ['workProfileId', 'payRateId', 'position', 'location', 'payRateName'] as const) {
+      const value = record[key] ?? record[`_${key}`];
+      if (value != null && typeof value !== 'string') {
+        throw new Error(`${key} must be a string`);
+      }
+      details[key] = typeof value === 'string' ? value : undefined;
+    }
+
     // Build unpaid breaks array as Duration[]
     const rawBreaks = Array.isArray((data as { unpaidBreaks?: Duration[] }).unpaidBreaks)
       ? (data as { unpaidBreaks?: Duration[] }).unpaidBreaks
@@ -78,6 +101,7 @@ export default class Shift {
       id,
       workplace,
       payRate: Number(payRate),
+      ...details,
       startTime,
       endTime,
       unpaidBreaks: unpaidBreaks.length > 0 ? unpaidBreaks : undefined
@@ -125,6 +149,21 @@ export default class Shift {
   }
   get payRate(): number {
     return this._payRate;
+  }
+  get workProfileId(): string | undefined {
+    return this._workProfileId;
+  }
+  get payRateId(): string | undefined {
+    return this._payRateId;
+  }
+  get position(): string | undefined {
+    return this._position;
+  }
+  get location(): string | undefined {
+    return this._location;
+  }
+  get payRateName(): string | undefined {
+    return this._payRateName;
   }
   get startTime(): Date {
     return this._startTime;
@@ -194,6 +233,22 @@ export default class Shift {
     this._payRate = n;
   }
 
+  set workProfileId(value: string | undefined) {
+    this._workProfileId = value?.trim() || undefined;
+  }
+  set payRateId(value: string | undefined) {
+    this._payRateId = value?.trim() || undefined;
+  }
+  set position(value: string | undefined) {
+    this._position = value?.trim() || undefined;
+  }
+  set location(value: string | undefined) {
+    this._location = value?.trim() || undefined;
+  }
+  set payRateName(value: string | undefined) {
+    this._payRateName = value?.trim() || undefined;
+  }
+
   set startTime(startTime: Date) {
     const d = new Date(startTime);
     if (Number.isNaN(d.getTime())) throw new Error('Invalid date');
@@ -228,7 +283,7 @@ export default class Shift {
     return new Duration({ hours, minutes });
   }
 
-  toDTO(): {
+  toDTO(): ShiftWorkDetails & {
     workplace: string;
     payRate: number;
     startTime: string;
@@ -238,6 +293,11 @@ export default class Shift {
     return {
       workplace: this.workplace,
       payRate: this.payRate,
+      workProfileId: this.workProfileId,
+      payRateId: this.payRateId,
+      position: this.position,
+      location: this.location,
+      payRateName: this.payRateName,
       startTime: this.startTime.toISOString(),
       endTime: this.endTime.toISOString(),
       unpaidBreaks: this.unpaidBreaks?.map((b) => b.toDTO()) ?? []

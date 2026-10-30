@@ -11,7 +11,7 @@ export default {
     },
   },
 
-  emits: ['login', 'import', 'tutorial', 'changelog', 'toggle-legends'],
+  emits: ['login', 'import', 'tutorial', 'changelog', 'toggle-legends', 'work-details'],
 
   computed: {
     ...mapStores(useAuthStore),
@@ -45,6 +45,10 @@ export default {
 <template>
   <div class="main-menu" @click.stop>
     <span class="menu-heading">Data</span>
+    <button class="menu-item" @click="$emit('work-details')">
+      <span class="menu-icon" aria-hidden="true">💼</span>
+      <span class="menu-label">Work details</span>
+    </button>
     <button class="menu-item" @click="$emit('import')">
       <span class="menu-icon">
         <img class="inline-icon" src="https://img.icons8.com/fluency/96/login-rounded.png" alt="import" />

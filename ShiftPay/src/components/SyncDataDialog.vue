@@ -69,12 +69,8 @@ export default {
 
         // Upload work infos
         const workInfoPromises: Promise<unknown>[] = [];
-        this.workInfosStore.workInfos.forEach((info, workplace) => {
-          if (info.payRates.size > 0) {
-            workInfoPromises.push(
-              api.workInfos.createOrUpdate(workplace, [...info.payRates], info.id)
-            );
-          }
+        this.workInfosStore.workInfos.forEach((info) => {
+          workInfoPromises.push(api.workInfos.createOrUpdate(info));
         });
         await Promise.all(workInfoPromises);
 

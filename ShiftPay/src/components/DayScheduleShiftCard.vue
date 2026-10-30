@@ -64,6 +64,9 @@ export default {
     <details class="info">
       <summary>
         <div class="workplace" title="Workplace">{{ shift.workplace }}</div>
+        <div v-if="shift.position || shift.location" class="work-details">
+          {{ [shift.position, shift.location].filter(Boolean).join(' · ') }}
+        </div>
 
         <div class="main">
           <div class="billable-duration" title="Billable Duration">
@@ -79,6 +82,9 @@ export default {
       </summary>
 
       <div class="others">
+        <div v-if="shift.payRateName" class="rate-name" title="Selected Pay Rate">
+          {{ shift.payRateName }}
+        </div>
         <div v-if="shift.totalBreakDuration.totalMinutes" class="unpaid-breaks" title="Total Unpaid Break Duration">
           + {{ shift.totalBreakDuration.format(undefined, 'always') }} 💤
         </div>
@@ -187,6 +193,12 @@ export default {
 .info .workplace {
   font-weight: bold;
   color: var(--text-color);
+}
+
+.info .work-details {
+  color: var(--text-color-faded);
+  font-size: smaller;
+  white-space: normal;
 }
 
 .info .billable-duration {

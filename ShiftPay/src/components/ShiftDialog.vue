@@ -1,7 +1,8 @@
 <script lang="ts">
 import Shift from '@/models/Shift';
 import Duration from '@/models/Duration';
-import { deepClone } from '@/utils';
+import type { WorkProfile, PayRateOption } from '@/models/WorkInfo';
+import { currencyFormat, deepClone } from '@/utils';
 import { STATUS } from '@/types';
 
 import { mapStores } from 'pinia';
@@ -20,13 +21,31 @@ function createInitialData(
 ) {
   return {
     STATUS,
-    formData: deepClone<Partial<Shift>>(shift),
+    formData: deepClone<Partial<Shift>>({
+      id: shift.id,
+      workplace: shift.workplace,
+      payRate: shift.payRate,
+      startTime: shift.startTime,
+      endTime: shift.endTime,
+      unpaidBreaks: shift.unpaidBreaks,
+      ...workDetails(shift)
+    }),
     saveShiftTemplate: false,
     deleteShiftTemplate: false,
     repeatPreset: 'none',
     templateName: '',
     hiddenElements: [] as Element[], // Elements to hide when holding a button in action bar
     currentAction: '', // Track the current action being performed for loading state
+  };
+}
+
+function workDetails(shift: Partial<Shift>) {
+  return {
+    workProfileId: shift.workProfileId,
+    payRateId: shift.payRateId,
+    position: shift.position,
+    location: shift.location,
+    payRateName: shift.payRateName
   };
 }
 
@@ -65,6 +84,40 @@ export default {
     isEditingTemplate(): boolean {
       return this.saveShiftTemplate && this.shiftTemplatesStore.templates.has(this.templateName);
     },
+
+    workProfiles(): WorkProfile[] {
+      return this.workInfosStore.workInfos.get(this.formData.workplace ?? '')?.profiles ?? [];
+    },
+
+    selectedProfile(): WorkProfile | undefined {
+      return this.workProfiles.find((profile) => profile.id === this.formData.workProfileId);
+    },
+
+    payRateOptions(): PayRateOption[] {
+      return this.selectedProfile?.payRates ?? [];
+    },
+
+    savedProfileChanged(): boolean {
+      const hasDetails = Boolean(this.formData.workProfileId || this.formData.position || this.formData.location);
+      return hasDetails && (!this.selectedProfile ||
+        (this.selectedProfile.position ?? '') !== (this.formData.position ?? '') ||
+        (this.selectedProfile.location ?? '') !== (this.formData.location ?? ''));
+    },
+
+    savedRateChanged(): boolean {
+      if (!this.formData.payRateId) return false;
+      const rate = this.payRateOptions.find((option) => option.id === this.formData.payRateId);
+      return !rate || rate.hourlyRate !== this.formData.payRate || rate.name !== (this.formData.payRateName ?? '');
+    },
+
+    unpaidBreakHourOptions(): string[] {
+      const { startTime, endTime, unpaidBreaks } = this.formData;
+      if (!startTime || !endTime) return ['0'];
+      const breakMinutes = (unpaidBreaks ?? []).reduce((total, duration) => total + duration.hours * 60 + duration.minutes, 0);
+      const billableMinutes = (endTime.getTime() - startTime.getTime()) / 60000 - breakMinutes;
+      const hours = Number.isFinite(billableMinutes) ? Math.max(0, Math.floor(billableMinutes / 60)) : 0;
+      return Array.from({ length: Math.min(hours, 24) + 1 }, (_, hour) => String(hour));
+    },
   },
 
   emits: {
@@ -81,6 +134,51 @@ export default {
 
     close() {
       (this.$refs.baseDialog as HTMLDialogElement).close();
+    },
+
+    profileLabel(profile: Pick<WorkProfile, 'position' | 'location'>, index?: number): string {
+      return [profile.position, profile.location].filter(Boolean).join(' · ') ||
+        (index === undefined ? 'General' : `Profile ${index + 1}`);
+    },
+
+    rateLabel(rate: Pick<PayRateOption, 'name' | 'hourlyRate'>): string {
+      return `${rate.name ? `${rate.name} — ` : ''}${currencyFormat(rate.hourlyRate)}/h`;
+    },
+
+    changeWorkplace(workplace: string) {
+      if (workplace === this.formData.workplace) return;
+      this.formData.workplace = workplace;
+      this.selectProfile('');
+      if (this.workProfiles.length === 1) {
+        this.selectProfile(this.workProfiles[0].id);
+      }
+    },
+
+    selectProfile(profileId: string) {
+      if (profileId === '__saved') return;
+      const profile = this.workProfiles.find((option) => option.id === profileId);
+      this.formData.workProfileId = profile?.id;
+      this.formData.position = profile?.position;
+      this.formData.location = profile?.location;
+      this.formData.payRateId = undefined;
+      this.formData.payRateName = undefined;
+      this.formData.payRate = undefined;
+      if (profile?.payRates.length === 1) {
+        this.selectPayRate(profile.payRates[0].id);
+      }
+    },
+
+    selectPayRate(rateId: string) {
+      if (rateId === '__saved') return;
+      const rate = this.payRateOptions.find((option) => option.id === rateId);
+      this.formData.payRateId = rate?.id;
+      this.formData.payRateName = rate?.name || undefined;
+      if (rate) this.formData.payRate = rate.hourlyRate;
+    },
+
+    customRateChanged() {
+      this.formData.payRateId = undefined;
+      this.formData.payRateName = undefined;
     },
 
     setRepeatPreset(preset: 'none' | '1d' | '1w' | '1m' | 'custom') {
@@ -126,6 +224,7 @@ export default {
       console.log('Quick adding shift:', shift);
 
       const newShift = new Shift({
+        ...workDetails(shift),
         workplace: shift.workplace,
         payRate: shift.payRate,
         startTime: shift.startTime,
@@ -154,6 +253,7 @@ export default {
     parseFormData(): Shift {
       try {
         return new Shift({
+          ...workDetails(this.formData),
           id: this.formData.id!,
           workplace: this.formData.workplace!,
           payRate: this.formData.payRate!,
@@ -223,6 +323,7 @@ export default {
                 const end = new Date(currentFromDate.getTime() + duration);
 
                 const repeatShift = new Shift({
+                  ...workDetails(shift),
                   workplace: shift!.workplace,
                   payRate: shift!.payRate,
                   startTime: start,
@@ -241,7 +342,7 @@ export default {
             });
 
             // Add workplace and pay rate to workInfos (same info for multiple shifts)
-            this.workInfosStore.add(shift.workplace, shift.payRate).catch((error) => {
+            this.workInfosStore.add(shift.workplace, shift.payRate, shift.workProfileId).catch((error) => {
               alert('Failed to add work info: ' + error);
               // Continue even if it fails
             });
@@ -339,6 +440,7 @@ export default {
 
       this.formData.workplace = shift.workplace;
       this.formData.payRate = shift.payRate;
+      Object.assign(this.formData, workDetails(shift));
 
       // Adjust dates to selected date
       const startTime = new Date(shift.startTime);
@@ -416,26 +518,41 @@ export default {
         <div class="content">
           <InputLabel label-text="Workplace" for-id="workplace" :loading="workInfosStore.status === STATUS.Loading">
             <ComboBox :value="formData?.workplace || ''"
-              @update:value="newValue => { formData.workplace = newValue; formData.payRate = undefined; }"
-              :list="Array.from(workInfosStore.workInfos.keys())"
-              @delete-item="workInfo => workInfosStore.delete(workInfo).catch((error) => alert('Failed to delete workplace \n' + error.message))"
-              deletable>
+              @update:value="changeWorkplace" :list="Array.from(workInfosStore.workInfos.keys())">
               <input type="search" id="workplace" name="workplace" placeholder="e.g. Company Name"
-                v-model="formData.workplace" required />
+                :value="formData.workplace" @input="changeWorkplace(($event.target as HTMLInputElement).value)" required />
             </ComboBox>
           </InputLabel>
 
-          <InputLabel label-text="Pay Rate" for-id="pay-rate" :loading="workInfosStore.status === STATUS.Loading">
-            <ComboBox :value="formData.payRate ? formData.payRate.toString() : ''"
-              @update:value="(newValue: number | undefined) => (formData.payRate = Number(newValue))" :list="formData.workplace && workInfosStore.workInfos.get(formData.workplace)?.payRates
-                ? Array.from(workInfosStore.workInfos.get(formData.workplace)?.payRates ?? []).map((pr) => pr.toString())
-                : []
-                "
-              @delete-item="payRate => formData.workplace ? workInfosStore.delete(formData.workplace, Number(payRate)).catch((error) => alert('Failed to delete pay rate \n' + error.message)) : null"
-              deletable>
-              <input type="number" id="pay-rate" name="payRate" placeholder="e.g. 23.23" v-model="formData.payRate"
-                step="0.01" required />
-            </ComboBox>
+          <InputLabel v-if="workProfiles.length || savedProfileChanged" label-text="Position / location" for-id="work-profile">
+            <select id="work-profile" aria-label="Position and location"
+              :value="savedProfileChanged ? '__saved' : formData.workProfileId ?? ''"
+              @change="selectProfile(($event.target as HTMLSelectElement).value)">
+              <option v-if="savedProfileChanged" value="__saved">
+                Saved: {{ profileLabel(formData) }}
+              </option>
+              <option value="">Choose a profile (optional)</option>
+              <option v-for="(profile, index) in workProfiles" :key="profile.id" :value="profile.id">
+                {{ profileLabel(profile, index) }}
+              </option>
+            </select>
+          </InputLabel>
+
+          <InputLabel v-if="payRateOptions.length || savedRateChanged" label-text="Saved pay rates" for-id="saved-pay-rate">
+            <select id="saved-pay-rate" aria-label="Saved pay rates"
+              :value="savedRateChanged ? '__saved' : formData.payRateId ?? ''"
+              @change="selectPayRate(($event.target as HTMLSelectElement).value)">
+              <option v-if="savedRateChanged" value="__saved">
+                Saved: {{ rateLabel({ name: formData.payRateName ?? '', hourlyRate: formData.payRate ?? 0 }) }}
+              </option>
+              <option value="">Custom hourly rate</option>
+              <option v-for="rate in payRateOptions" :key="rate.id" :value="rate.id">{{ rateLabel(rate) }}</option>
+            </select>
+          </InputLabel>
+
+          <InputLabel label-text="Hourly rate" for-id="pay-rate" :loading="workInfosStore.status === STATUS.Loading">
+            <input type="number" id="pay-rate" name="payRate" placeholder="e.g. 23.23" v-model.number="formData.payRate"
+              @input="customRateChanged" min="0" step="0.01" required />
           </InputLabel>
         </div>
       </div>
@@ -478,7 +595,7 @@ export default {
                   ? (formData.unpaidBreaks![index].hours = Number(hours))
                   : alert('Invalid input: Please enter a valid number.');
               }
-            " :list="[...Array((formData.billableDuration?.hours ?? 0) + 1).keys()].map(String)">
+            " :list="unpaidBreakHourOptions">
               <input type="number" name="unpaidBreak-hours" placeholder="hours"
                 :value="formData.unpaidBreaks![index].hours > 0 ? formData.unpaidBreaks![index].hours : ''" @input="
                   (event) => {
@@ -704,6 +821,17 @@ form {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: calc(var(--padding) * 1.2);
+}
+
+#job-details select {
+  width: 100%;
+  min-width: 0;
+  padding: var(--padding);
+  font: inherit;
+  color: var(--text-color);
+  background: var(--input-background-color);
+  border: 0;
+  border-radius: var(--border-radius);
 }
 
 /* ── Schedule ── */
