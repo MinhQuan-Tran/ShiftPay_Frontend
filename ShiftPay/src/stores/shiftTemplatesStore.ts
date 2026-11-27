@@ -7,6 +7,7 @@ import { withStatus } from '@/utils';
 
 export const useShiftTemplatesStore = defineStore('shiftTemplates', {
   state: () => ({
+    // Map keyed by templateName, storing id and shift data
     templates: new Map<string, ShiftTemplate>(),
     status: STATUS.Ready as Status
   }),

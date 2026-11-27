@@ -80,7 +80,7 @@ export default {
     },
 
     selectedRangeLabel(): string | null {
-      const fmt = (d: Date) => d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      const fmt = (d: Date) => d.toLocaleDateString(navigator.language, { weekday: 'short', month: 'short', day: 'numeric' });
       switch (this.formData.clearOption) {
         case 'day': return fmt(this.dayStart);
         case 'week': return `${fmt(this.weekStart)} – ${fmt(this.weekEnd)}`;
@@ -121,11 +121,11 @@ export default {
     },
 
     formatDate(d: Date): string {
-      return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      return d.toLocaleDateString(navigator.language, { weekday: 'short', month: 'short', day: 'numeric' });
     },
 
     formatShiftDate(d: Date): string {
-      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      return d.toLocaleDateString(navigator.language, { month: 'short', day: 'numeric' });
     },
 
     clearShifts(event: Event) {

@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/stores/authStore';
 import type Shift from './models/Shift';
+import type WorkInfo from './models/WorkInfo';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 type ApiResource =
@@ -136,14 +137,11 @@ const api = {
       return createRequest(`workInfos/${id ?? ''}`, { method: 'GET' });
     },
 
-    /**
-     * Create or update a work info (upsert by id if provided).
-     * If id is provided and exists, updates (merges payRates); otherwise creates.
-     */
-    async createOrUpdate(workplace: string, payRates: number[], id?: string) {
+    // Create, or update a work info if id is provided and exists
+    async createOrUpdate(workInfo: WorkInfo) {
       return createRequest('workInfos', {
         method: 'POST',
-        body: { id, workplace, payRates }
+        body: { ...workInfo.toDTO() }
       });
     },
 

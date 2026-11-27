@@ -23,6 +23,13 @@ export default {
 
     handleEditShift(shift: Shift) {
       this.$emit('edit-shift', shift);
+    },
+
+    formatDate(date: Date): string {
+      return date.toLocaleDateString(navigator.language, {
+        month: 'short',
+        day: 'numeric'
+      });
     }
   }
 };
@@ -35,10 +42,7 @@ export default {
         <div class="date"
           v-if="new Date(shift.startTime).setHours(0, 0, 0, 0) !== new Date(selectedDate).setHours(0, 0, 0, 0)">
           {{
-            shift.startTime.toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric'
-            })
+            formatDate(shift.startTime)
           }}
         </div>
         <div class="time">{{ toTimeStr(shift.startTime) }}</div>
@@ -47,10 +51,7 @@ export default {
         <div class="date"
           v-if="new Date(shift.endTime).setHours(0, 0, 0, 0) !== new Date(selectedDate).setHours(0, 0, 0, 0)">
           {{
-            shift.endTime.toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric'
-            })
+            formatDate(shift.endTime)
           }}
         </div>
         <div class="time">{{ toTimeStr(shift.endTime) }}</div>

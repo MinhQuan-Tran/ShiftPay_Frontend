@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
 import api from '@/api';
+import WorkInfo from '@/models/WorkInfo';
 import { useAuthStore } from './authStore';
-import { STATUS, type Status, type WorkInfo } from '@/types';
+import { STATUS, type Status } from '@/types';
 import { withStatus } from '@/utils';
 
 export const useWorkInfosStore = defineStore('workInfos', {
@@ -30,11 +31,11 @@ export const useWorkInfosStore = defineStore('workInfos', {
         this.workInfos = new Map<string, WorkInfo>(
           parsedData.map((workInfo: WorkInfo) => [
             workInfo.workplace,
-            {
+            new WorkInfo({
               id: workInfo.id,
               workplace: workInfo.workplace,
               payRates: new Set(workInfo.payRates ?? [])
-            }
+            })
           ])
         );
 
@@ -55,35 +56,47 @@ export const useWorkInfosStore = defineStore('workInfos', {
           throw new Error('Invalid pay rate');
         }
 
+        const existingEntry = this.workInfos.get(workplace);
+
         // Remote update
         const auth = useAuthStore();
 
         if (auth.isAuthenticated) {
-          // Pass existing id if updating, so server merges payRates
-          const existingEntry = this.workInfos.get(workplace);
-          const workInfo = await api.workInfos.createOrUpdate(workplace, [payRate], existingEntry?.id);
+          const workInfo = await api.workInfos.createOrUpdate(
+            new WorkInfo({
+              // If id is provided and exists, updates; otherwise creates.
+              id: existingEntry?.id ?? '',
+              workplace,
+              payRates: new Set<number>([payRate])
+            })
+          );
 
           // Replace with server response to ensure consistency
-          this.workInfos.set(workInfo.workplace, {
-            id: workInfo.id,
-            workplace: workInfo.workplace,
-            payRates: new Set(workInfo.payRates ?? [])
-          });
+          this.workInfos.set(
+            workInfo.workplace,
+            new WorkInfo({
+              id: workInfo.id,
+              workplace: workInfo.workplace,
+              payRates: new Set(workInfo.payRates ?? [])
+            })
+          );
 
           return;
         }
 
         // Local update
-        const existingEntry = this.workInfos.get(workplace);
-        if (!existingEntry) {
-          this.workInfos.set(workplace, {
+        if (existingEntry) {
+          return existingEntry.payRates.add(payRate);
+        }
+
+        this.workInfos.set(
+          workplace,
+          new WorkInfo({
             id: crypto.randomUUID(),
             workplace,
             payRates: new Set<number>([payRate])
-          });
-        } else {
-          existingEntry.payRates.add(payRate);
-        }
+          })
+        );
       });
     },
 

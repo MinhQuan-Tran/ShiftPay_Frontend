@@ -1,10 +1,5 @@
 import type Shift from './models/Shift';
-
-export type WorkInfo = {
-  id: string;
-  workplace: string;
-  payRates: Set<number>;
-};
+import type WorkInfo from './models/WorkInfo';
 
 export interface ShiftTemplate {
   id: string;

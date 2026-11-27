@@ -10,6 +10,7 @@ import { useShiftTemplatesStore } from '@/stores/shiftTemplatesStore';
 import { useWorkInfosStore } from '@/stores/workInfosStore';
 
 import Shift from '@/models/Shift';
+import WorkInfo from '@/models/WorkInfo';
 import { STATUS } from '@/types';
 
 export default {
@@ -72,7 +73,13 @@ export default {
         this.workInfosStore.workInfos.forEach((info, workplace) => {
           if (info.payRates.size > 0) {
             workInfoPromises.push(
-              api.workInfos.createOrUpdate(workplace, [...info.payRates], info.id)
+              api.workInfos.createOrUpdate(
+                new WorkInfo({
+                  id: info.id ?? '',
+                  workplace,
+                  payRates: new Set(info.payRates)
+                })
+              )
             );
           }
         });

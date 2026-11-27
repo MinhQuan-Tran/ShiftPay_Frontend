@@ -9,7 +9,8 @@ import { useWorkInfosStore } from '@/stores/workInfosStore';
 import { useShiftSessionStore } from '@/stores/shiftSessionStore';
 
 import Shift from '@/models/Shift';
-import type { WorkInfo, ImportParsedData } from '@/types';
+import WorkInfo from '@/models/WorkInfo';
+import type { ImportParsedData } from '@/types';
 
 type ImportStep = 'select' | 'preview' | 'importing' | 'complete' | 'error';
 
@@ -241,7 +242,14 @@ export default {
             if (payRates === null) {
               throw new Error('Invalid pay rates');
             }
-            result.workInfos.set(workplace, { payRates } as WorkInfo);
+            result.workInfos.set(
+              workplace,
+              new WorkInfo({
+                id: typeof info.id === 'string' ? info.id : crypto.randomUUID(),
+                workplace,
+                payRates
+              })
+            );
           } catch (error) {
             result.workInfoErrors.push(`Workplace "${workplace}": ${(error instanceof Error ? error.message : String(error))}`);
           }

@@ -1,6 +1,6 @@
 {
   "name": "shiftpay",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "private": true,
   "type": "module",
   "scripts": {
@@ -42,5 +42,8 @@
     "vite": "^6.3.2",
     "vitest": "^4.0.18",
     "vue-tsc": "^3.3.8"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
   }
 }

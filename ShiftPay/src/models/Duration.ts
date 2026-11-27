@@ -119,7 +119,7 @@ export default class Duration {
     }
 
     // @ts-expect-error -- DurationFormat is not yet supported
-    return new Intl.DurationFormat([], {
+    return new Intl.DurationFormat(navigator.language, {
       style: style,
       hoursDisplay: hoursDisplay
     }).format(this);

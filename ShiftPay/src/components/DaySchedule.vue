@@ -305,6 +305,25 @@ export default {
       }
 
       return 'custom';
+    },
+
+    selectedRangeLabel(): string {
+      const start = new Date(this.selectedRange.start);
+      const end = new Date(this.selectedRange.end);
+      const lastDay = new Date(end);
+      lastDay.setDate(lastDay.getDate() - 1);
+
+      const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
+        month: 'short',
+        day: 'numeric',
+        year: start.getFullYear() === lastDay.getFullYear() ? undefined : 'numeric'
+      });
+
+      if (start.toDateString() === lastDay.toDateString()) {
+        return dateFormatter.format(start);
+      }
+
+      return `${dateFormatter.format(start)} - ${dateFormatter.format(lastDay)}`;
     }
   },
 
@@ -344,18 +363,24 @@ export default {
     <div class="actions">
       <button @click="($refs.clearShiftsDialog as any).showModal()" class="danger" id="clear-btn">Clear</button>
 
-      <Transition>
-        <button v-if="
-          selectedRange.start.getTime() === new Date().setHours(0, 0, 0, 0) && // Only show the check in/out button if the selected date is today
-          selectedRange.end.getTime() === new Date(new Date().setDate(new Date().getDate() + 1)).setHours(0, 0, 0, 0) &&
-          shiftSessionStore.status !== STATUS.Loading // Don't show the button while loading the shift session
-        " @click="handleCheckInOut" id="check-in-out-btn"
-          :class="{ primary: !shiftSessionStore.isInProgress, warning: shiftSessionStore.isInProgress }">
-          {{ shiftSessionStore.isInProgress ? 'End' : 'Start' }} Shift
-        </button>
-      </Transition>
+      <div class="action-middle">
+        <span id="selected-range-label" aria-live="polite">
+          {{ selectedRangeLabel }}
+        </span>
 
-      <button @click="handleAddShift" class="success" id="add-btn">Add Shift</button>
+        <Transition>
+          <button v-if="
+            selectedRange.start.getTime() === new Date().setHours(0, 0, 0, 0) && // Only show the check in/out button if the selected date is today
+            selectedRange.end.getTime() === new Date(new Date().setDate(new Date().getDate() + 1)).setHours(0, 0, 0, 0) &&
+            shiftSessionStore.status !== STATUS.Loading // Don't show the button while loading the shift session
+          " @click="handleCheckInOut" id="check-in-out-btn"
+            :class="{ primary: !shiftSessionStore.isInProgress, warning: shiftSessionStore.isInProgress }">
+            {{ shiftSessionStore.isInProgress ? 'End' : 'Start' }} Shift
+          </button>
+        </Transition>
+      </div>
+
+      <button @click="handleAddShift" class="success" id="add-btn">Add</button>
     </div>
 
     <div class="shift-list" id="shift-list">
@@ -395,15 +420,41 @@ export default {
 }
 
 .actions #check-in-out-btn {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   overflow: hidden;
-  flex-grow: 10;
+}
+
+.actions .action-middle {
+  position: relative;
+  display: flex;
+  flex-grow: 10 !important;
+  min-width: 0;
+}
+
+.actions #selected-range-label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  color: var(--text-color-faded);
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* For animation from Vue */
 .actions #check-in-out-btn.v-enter-from,
 .actions #check-in-out-btn.v-leave-to {
-  flex-grow: 0;
-  width: 0;
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.actions #selected-range-label:has(#check-in-out-btn.v-enter-from),
+.actions #selected-range-label:has(#check-in-out-btn.v-leave-to) {
+  opacity: 0;
 }
 
 .shift-list {
