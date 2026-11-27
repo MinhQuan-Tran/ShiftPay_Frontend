@@ -191,9 +191,11 @@
     ]
   },
   {
-    "version": "",
-    "date": "",
+    "version": "0.4.6",
+    "date": "2026-11-28T00:00:00+1100",
     "changes": [
+      "[Fix] End Shift button not switching back to Start Shift after clocking out",
+      "[Fix - Beta] Uploading local data to an online account failing when workplaces are saved"
     ]
   }
 ]

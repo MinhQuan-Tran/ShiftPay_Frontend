@@ -65,6 +65,11 @@ export default {
     isEditingTemplate(): boolean {
       return this.saveShiftTemplate && this.shiftTemplatesStore.templates.has(this.templateName);
     },
+
+    // Value sent by the Add Shift button; 'check in' (dialog opened from End Shift) also clears the clock-in session
+    submitAction(): 'add' | 'check in' {
+      return this.action === 'check in/out' ? 'check in' : 'add';
+    },
   },
 
   emits: {
@@ -602,11 +607,13 @@ export default {
               'Saving...' : 'Edit Template' }}
           </button>
 
-          <button type="submit" name="action" value="add"
-            :class="['primary', { focus: currentAction === 'add', active: saveShiftTemplate }]" id="add-shift-btn"
+          <!-- In check in/out mode this submits 'check in' so the clock-in session gets cleared -->
+          <button type="submit" name="action" :value="submitAction"
+            :class="['primary', { focus: currentAction === submitAction, active: saveShiftTemplate }]" id="add-shift-btn"
             :disabled="shiftsStore.status === STATUS.Loading">
-            <span v-if="currentAction === 'add' && shiftsStore.status === STATUS.Loading" class="button-spinner"></span>
-            {{ currentAction === 'add' && shiftsStore.status === STATUS.Loading ?
+            <span v-if="currentAction === submitAction && shiftsStore.status === STATUS.Loading"
+              class="button-spinner"></span>
+            {{ currentAction === submitAction && shiftsStore.status === STATUS.Loading ?
               'Adding...' :
               (saveShiftTemplate ? 'Save & ' : '') + 'Add Shift' }}
           </button>
