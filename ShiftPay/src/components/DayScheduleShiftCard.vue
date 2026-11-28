@@ -1,7 +1,10 @@
 <script lang="ts">
 import Shift from '@/models/Shift';
 
-import { currencyFormat, toTimeStr } from '@/utils';
+import { toTimeStr } from '@/utils';
+
+import { mapStores } from 'pinia';
+import { useCurrencyStore } from '@/stores/currencyStore';
 
 export default {
   props: {
@@ -17,8 +20,11 @@ export default {
 
   emits: ['edit-shift'],
 
+  computed: {
+    ...mapStores(useCurrencyStore)
+  },
+
   methods: {
-    currencyFormat,
     toTimeStr,
 
     handleEditShift(shift: Shift) {
@@ -70,10 +76,10 @@ export default {
             {{ shift.billableDuration?.format() ?? 'error' }}
           </div>
 
-          <div class="pay-rate" title="Pay Rate">× {{ currencyFormat(shift.payRate) }}/h =</div>
+          <div class="pay-rate" title="Pay Rate">× {{ currencyStore.format(shift.payRate) }}/h =</div>
 
           <div class="income" title="Income">
-            {{ shift.income === undefined ? 'error' : currencyFormat(shift.income) }}
+            {{ shift.income === undefined ? 'error' : currencyStore.format(shift.income) }}
           </div>
         </div>
       </summary>

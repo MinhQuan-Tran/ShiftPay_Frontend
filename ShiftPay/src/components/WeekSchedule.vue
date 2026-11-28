@@ -1,10 +1,9 @@
 <script lang="ts">
 import { type Day, type DateRange, STATUS } from '@/types';
-import { currencyFormat } from '@/utils';
-
 import { mapStores } from 'pinia';
 
 import { useShiftsStore, STAT_OPTIONS, type Stats } from '@/stores/shiftsStore';
+import { useCurrencyStore } from '@/stores/currencyStore';
 import LoadingOverlay from '@/components/LoadingOverlay.vue';
 
 export default {
@@ -16,6 +15,10 @@ export default {
     showLegends: {
       type: Boolean,
       default: true
+    },
+    showDayIncome: {
+      type: Boolean,
+      default: false
     }
   },
 
@@ -40,7 +43,7 @@ export default {
   components: { LoadingOverlay },
 
   computed: {
-    ...mapStores(useShiftsStore),
+    ...mapStores(useShiftsStore, useCurrencyStore),
 
     title() {
       const date = new Date(this.today);
@@ -104,6 +107,12 @@ export default {
       }
 
       return calendar;
+    },
+
+    // Income for each calendar day (same order as `calendar`).
+    // Uses the same rule as the week/month totals: a shift counts on the day it ends.
+    dayIncomes(): number[] {
+      return this.calendar.map((day) => this.shiftsStore.stats(day.dayStartTime, day.dayEndTime).income.beforeTax);
     },
 
     weekStats() {
@@ -178,6 +187,13 @@ export default {
   },
 
   methods: {
+    // Whether an income (stored in AUD) is at least the smallest unit of the currency it's shown in,
+    // e.g. 1 cent in USD, 1 đồng in VND. Checked after converting, so small amounts still show in VND.
+    isVisibleIncome(amount: number): boolean {
+      const factor = 10 ** this.currencyStore.fractionDigits;
+      return Math.round(this.currencyStore.convert(amount) * factor) > 0;
+    },
+
     goToNextMonth() {
       this.slideDirection = 1;
       this.monthChange++;
@@ -228,10 +244,10 @@ export default {
       switch (category) {
         case 'income': {
           if (sub in stats.income) {
-            return currencyFormat(stats.income[sub as keyof Stats['income']]);
+            return this.currencyStore.format(stats.income[sub as keyof Stats['income']]);
           }
 
-          return currencyFormat(stats.income.beforeTax);
+          return this.currencyStore.format(stats.income.beforeTax);
         }
 
         case 'hours': {
@@ -282,7 +298,7 @@ export default {
     </div>
 
     <Transition :name="transitionName" mode="out-in">
-      <div class="calendar" :key="monthChange">
+      <div :class="['calendar', { 'show-day-income': showDayIncome }]" :key="monthChange">
         <div v-for="(day, dayIndex) in calendar" :key="dayIndex"
           @click="$emit('update:selectedRange', { start: day.dayStartTime, end: day.dayEndTime })" :class="[
             'day-container',
@@ -311,6 +327,11 @@ export default {
           ]">
             {{ day.dayStartTime.getDate() }}
           </div>
+
+          <span v-if="showDayIncome && isVisibleIncome(dayIncomes[dayIndex])" class="day-income"
+            :title="`Income: ${currencyStore.format(dayIncomes[dayIndex])}`">
+            {{ currencyStore.formatCompact(dayIncomes[dayIndex]) }}
+          </span>
         </div>
       </div>
     </Transition>
@@ -440,9 +461,16 @@ export default {
   grid-area: calendar;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  --day-income-space: 0px;
   grid-auto-rows: 2.5rem;
   text-align: center;
   width: 100%;
+}
+
+/* Room under each date for the day's income */
+.calendar.show-day-income {
+  --day-income-space: 0.65rem;
+  grid-auto-rows: calc(2.25rem + var(--day-income-space));
 }
 
 .calendar>* {
@@ -459,6 +487,25 @@ export default {
   cursor: pointer;
   border: 0 solid gray;
   --border-width: 1px;
+  padding-bottom: var(--day-income-space);
+}
+
+.day-income {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1px;
+  font-size: 0.6rem;
+  font-weight: bold;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  color: light-dark(#008a00, #64ff64);
+  pointer-events: none;
+}
+
+.day-container:has(.prev-month, .next-month) .day-income {
+  opacity: 0.5;
 }
 
 .day-container:hover,
@@ -680,7 +727,8 @@ export default {
 .has-shift::before {
   content: '';
   position: absolute;
-  top: 50%;
+  /* Centre on the date (the income sits in the space below it) */
+  top: calc(50% - var(--day-income-space) / 2);
   left: 50%;
   --size: 1.85em;
   --add-left-space: 0px;

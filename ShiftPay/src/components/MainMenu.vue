@@ -1,7 +1,18 @@
 <script lang="ts">
 import { mapStores } from 'pinia';
 
+import { STATUS } from '@/types';
 import { useAuthStore } from '@/stores/authStore';
+import { useCurrencyStore } from '@/stores/currencyStore';
+import { currencyFormat } from '@/utils';
+
+// Currency names for the picker, e.g. "VND – Vietnamese Dong" (falls back to the code alone)
+let currencyNames: Intl.DisplayNames | null = null;
+try {
+  currencyNames = new Intl.DisplayNames([navigator.language], { type: 'currency' });
+} catch {
+  currencyNames = null;
+}
 
 export default {
   props: {
@@ -9,19 +20,73 @@ export default {
       type: Boolean,
       required: true
     },
+    showDayIncome: {
+      type: Boolean,
+      default: false
+    },
   },
 
-  emits: ['login', 'import', 'tutorial', 'changelog', 'toggle-legends'],
+  emits: ['login', 'import', 'tutorial', 'changelog', 'toggle-legends', 'toggle-day-income'],
 
   computed: {
-    ...mapStores(useAuthStore),
+    ...mapStores(useAuthStore, useCurrencyStore),
+
+    // How amounts look, e.g. "$20" or "20$"
+    symbolPositionExample(): string {
+      return currencyFormat(
+        20,
+        this.currencyStore.activeCurrency,
+        { minimumFractionDigits: 0, maximumFractionDigits: 0 },
+        this.currencyStore.symbolPosition
+      );
+    },
+
+    currencyNote(): string {
+      const currency = this.currencyStore;
+
+      if (currency.status === STATUS.Loading) return 'Loading exchange rates…';
+      if (currency.isMissingRate) return `Exchange rates unavailable, showing ${currency.baseCurrency}`;
+      if (!currency.isConverting || currency.rate === null || !currency.exchangeRates) return '';
+
+      const rate = new Intl.NumberFormat([], { maximumSignificantDigits: 5 }).format(currency.rate);
+      const date = new Date(`${currency.exchangeRates.date}T00:00:00`).toLocaleDateString(navigator.language, {
+        day: 'numeric',
+        month: 'short'
+      });
+
+      // Non-breaking spaces keep "(27 Nov)" and "0.66401 USD" together when the line wraps
+      return `1 ${currency.baseCurrency} = ${rate}\u00a0${currency.displayCurrency} (${date.replace(/ /g, '\u00a0')})`;
+    },
 
     isSyncPending(): boolean {
       return localStorage.getItem('syncPending') === 'true';
     }
   },
 
+  mounted() {
+    // Fill the currency picker (uses the cached rates while they are fresh)
+    this.currencyStore.refreshRates().catch((error) => console.error('Could not load the currency list:', error));
+  },
+
   methods: {
+    currencyLabel(code: string): string {
+      const name = currencyNames?.of(code);
+      return name && name !== code ? `${code} – ${name}` : code;
+    },
+
+    toggleSymbolPosition() {
+      this.currencyStore.setSymbolPosition(this.currencyStore.symbolPosition === 'after' ? 'before' : 'after');
+    },
+
+    async changeCurrency(code: string) {
+      try {
+        await this.currencyStore.setDisplayCurrency(code);
+      } catch (error) {
+        // The note under the picker tells the user amounts stay in the pay currency
+        console.error(`Could not switch to ${code}:`, error);
+      }
+    },
+
     downloadData() {
       const data = JSON.stringify(localStorage);
       const blob = new Blob([data], { type: 'application/json' });
@@ -86,6 +151,43 @@ export default {
       </span>
       <span class="menu-label">{{ showLegends ? 'Hide' : 'Show' }} Legends</span>
     </button>
+    <button id="menu-day-income-btn" class="menu-item" @click="$emit('toggle-day-income')"
+      :aria-pressed="showDayIncome">
+      <span class="menu-icon">
+        <img class="inline-icon" src="https://img.icons8.com/fluency/96/cash--v1.png" alt="day income" />
+      </span>
+      <span class="menu-label">{{ showDayIncome ? 'Hide' : 'Show' }} Day Income</span>
+    </button>
+    <button id="menu-symbol-position-btn" class="menu-item" @click="toggleSymbolPosition"
+      title="Put the currency symbol before or after amounts"
+      :aria-label="`Currency symbol ${currencyStore.symbolPosition} the amount (${symbolPositionExample})`">
+      <span class="menu-icon">💲</span>
+      <span class="menu-label">Symbol Position</span>
+      <span class="menu-select" aria-hidden="true">{{ symbolPositionExample }}</span>
+    </button>
+    <label id="menu-currency" class="menu-item btn" for="currency-select"
+      :title="`Show and enter amounts in another currency. Shifts are still saved in ${currencyStore.baseCurrency}.`">
+      <span class="menu-icon">💱</span>
+      <span class="menu-label">Currency</span>
+      <!-- Shows just the code; the (invisible) native select on top lists the full names -->
+      <span class="menu-select">
+        <span aria-hidden="true">{{ currencyStore.displayCurrency }} ▾</span>
+        <select id="currency-select" :value="currencyStore.displayCurrency"
+          @change="changeCurrency(($event.target as HTMLSelectElement).value)">
+          <option v-for="code in currencyStore.availableCurrencies" :key="code" :value="code">
+            {{ currencyLabel(code) }}
+          </option>
+        </select>
+      </span>
+      <!-- Rate details, on their own row under "Currency" and the picker -->
+      <small v-if="currencyNote" class="menu-note" aria-live="polite">
+        {{ currencyNote }}
+        <template v-if="currencyStore.isConverting">
+          · <a href="https://frankfurter.dev" target="_blank" rel="noopener noreferrer">Frankfurter</a>
+        </template>
+      </small>
+    </label>
+
 
     <hr class="menu-divider" />
 
@@ -217,6 +319,68 @@ export default {
 .menu-label {
   background: transparent;
   flex: 1;
+}
+
+/* ── Currency picker ── */
+.menu-select {
+  position: relative;
+  padding: 0 0.6em;
+  border-radius: 6px;
+  background: var(--input-background-color);
+  white-space: nowrap;
+}
+
+.menu-select:focus-within {
+  outline: 2px solid var(--primary-color);
+}
+
+.menu-select select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Currency item: icon, label and picker on the first row, rate details on the second */
+#menu-currency {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'icon label select'
+    '.    note  note';
+  align-items: center;
+}
+
+#menu-currency .menu-icon {
+  grid-area: icon;
+}
+
+#menu-currency .menu-label {
+  grid-area: label;
+}
+
+#menu-currency .menu-select {
+  grid-area: select;
+}
+
+#menu-currency .menu-note {
+  grid-area: note;
+  padding-bottom: 0.2em;
+}
+
+.menu-note {
+  display: block;
+  font-size: 0.8em;
+  font-weight: normal;
+  line-height: 1.3;
+  color: var(--text-color-faded);
+  background: transparent;
+}
+
+.menu-note a {
+  color: inherit;
 }
 
 /* ── Badge (sync warning) ── */

@@ -1,7 +1,7 @@
 <script lang="ts">
 import Shift from '@/models/Shift';
 import Duration from '@/models/Duration';
-import { deepClone } from '@/utils';
+import { amountFromConverted, currencyFormat, deepClone, payRateFromTotal, totalFromPayRate } from '@/utils';
 import { STATUS } from '@/types';
 
 import { mapStores } from 'pinia';
@@ -9,6 +9,7 @@ import { useShiftsStore } from '@/stores/shiftsStore';
 import { useWorkInfosStore } from '@/stores/workInfosStore';
 import { useShiftTemplatesStore } from '@/stores/shiftTemplatesStore';
 import { useShiftSessionStore } from '@/stores/shiftSessionStore';
+import { useCurrencyStore } from '@/stores/currencyStore';
 
 import BaseDialog from './BaseDialog.vue';
 import ButtonConfirm from './ButtonConfirm.vue';
@@ -27,6 +28,8 @@ function createInitialData(
     templateName: '',
     hiddenElements: [] as Element[], // Elements to hide when holding a button in action bar
     currentAction: '', // Track the current action being performed for loading state
+    payRateDraft: null as string | null, // What the user is typing in Pay Rate (shown as-is until the field loses focus)
+    totalDraft: null as string | null, // What the user is typing in Total (shown as-is until the field loses focus)
   };
 }
 
@@ -60,7 +63,7 @@ export default {
   },
 
   computed: {
-    ...mapStores(useShiftsStore, useShiftTemplatesStore, useWorkInfosStore, useShiftSessionStore),
+    ...mapStores(useShiftsStore, useShiftTemplatesStore, useWorkInfosStore, useShiftSessionStore, useCurrencyStore),
 
     isEditingTemplate(): boolean {
       return this.saveShiftTemplate && this.shiftTemplatesStore.templates.has(this.templateName);
@@ -69,6 +72,127 @@ export default {
     // Value sent by the Add Shift button; 'check in' (dialog opened from End Shift) also clears the clock-in session
     submitAction(): 'add' | 'check in' {
       return this.action === 'check in/out' ? 'check in' : 'add';
+    },
+
+    // Shift length in whole minutes (same rounding as Shift.duration)
+    workedMinutes(): number {
+      const start = this.formData.startTime ? new Date(this.formData.startTime).getTime() : NaN;
+      const end = this.formData.endTime ? new Date(this.formData.endTime).getTime() : NaN;
+      if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return 0;
+
+      return Math.floor((end - start) / (1000 * 60));
+    },
+
+    unpaidBreakMinutes(): number {
+      return (this.formData.unpaidBreaks ?? []).reduce(
+        (sum: number, unpaidBreak: Duration) =>
+          sum + (Number(unpaidBreak.hours) || 0) * 60 + (Number(unpaidBreak.minutes) || 0),
+        0
+      );
+    },
+
+    // Worked minutes after unpaid breaks, never negative
+    billableMinutes(): number {
+      return Math.max(0, this.workedMinutes - this.unpaidBreakMinutes);
+    },
+
+    billableDurationLabel(): string {
+      if (this.billableMinutes === 0) return '';
+
+      const duration = new Duration({ minutes: this.billableMinutes });
+      try {
+        return duration.format();
+      } catch {
+        // Intl.DurationFormat isn't available in older browsers; don't break the form over a label
+        return `${duration.hours}h ${duration.minutes}m`;
+      }
+    },
+
+    // Total pay, always derived from the pay rate (the pay rate is what gets saved)
+    formTotal(): number | undefined {
+      if (this.billableMinutes === 0) return undefined;
+      return totalFromPayRate(this.formData.payRate, this.billableMinutes);
+    },
+
+    // Pay Rate and Total are shown and typed in the currency picked in the menu,
+    // but saved in the pay currency (AUD). 1 when no other currency is picked.
+    conversionRate(): number {
+      return this.currencyStore.convert(1);
+    },
+
+    // An hourly rate's rounding error is multiplied by the shift's hours, so keep enough precision
+    // for the total to round correctly even for a full day (or the current shift, if longer).
+    hourlyRateTolerance(): number {
+      return this.currencyStore.tolerance / Math.max(24, this.billableMinutes / 60);
+    },
+
+    // Changes when amounts start being shown in another currency or at another rate
+    conversionKey(): string {
+      return `${this.currencyStore.activeCurrency}:${this.conversionRate}`;
+    },
+
+    // e.g. "$" for AUD in Australia, "USD", "₫"
+    formCurrencySymbol(): string {
+      return this.currencyStore.symbol;
+    },
+
+    payRateInputValue(): string {
+      if (this.payRateDraft !== null) return this.payRateDraft;
+
+      const payRate = this.formData.payRate as unknown;
+      if (payRate === undefined || payRate === null || payRate === '' || Number.isNaN(Number(payRate))) return '';
+
+      return this.formatPayRate(Number(payRate));
+    },
+
+    // Saved pay rates for the workplace, labelled in the form's currency
+    payRateOptions(): Array<{ label: string; value: number }> {
+      const payRates = this.formData.workplace
+        ? this.workInfosStore.workInfos.get(this.formData.workplace)?.payRates
+        : undefined;
+
+      return Array.from(payRates ?? []).map((payRate) => ({ label: this.formatPayRate(payRate), value: payRate }));
+    },
+
+    totalInputValue(): string {
+      if (this.totalDraft !== null) return this.totalDraft;
+      if (this.formTotal === undefined) return '';
+
+      return this.currencyStore.convert(this.formTotal).toFixed(this.currencyStore.fractionDigits);
+    },
+
+    // When converting, what actually gets saved, e.g. "Saved in AUD: $301.20"
+    savedTotalHint(): string {
+      if (!this.currencyStore.isConverting || this.formTotal === undefined) return '';
+
+      const base = this.currencyStore.baseCurrency;
+      return `Saved in ${base}: ${currencyFormat(this.formTotal, base, {}, this.currencyStore.symbolPosition)}`;
+    },
+
+    // "20$" instead of "$20" (menu > Symbol Position)
+    symbolAfter(): boolean {
+      return this.currencyStore.symbolPosition === 'after';
+    },
+
+    // e.g. "7h 20m after unpaid breaks × $27.2727/h"
+    totalBreakdown(): string {
+      if (this.billableMinutes === 0) return '';
+
+      let breakdown = this.billableDurationLabel;
+      if (this.unpaidBreakMinutes > 0) breakdown += ' after unpaid breaks';
+
+      if (this.formTotal !== undefined) {
+        const digits = this.currencyStore.fractionDigits;
+        const payRate = currencyFormat(
+          this.currencyStore.convert(Number(this.formData.payRate)),
+          this.currencyStore.activeCurrency,
+          { minimumFractionDigits: digits, maximumFractionDigits: digits + 2 },
+          this.currencyStore.symbolPosition
+        );
+        breakdown += ` × ${payRate}/h`;
+      }
+
+      return breakdown;
     },
   },
 
@@ -361,6 +485,78 @@ export default {
       );
     },
 
+    // A pay rate (saved in AUD) as shown in the form's currency
+    formatPayRate(payRate: number): string {
+      if (!this.currencyStore.isConverting) return String(payRate);
+
+      // A couple of extra decimals so the converted rate isn't misleadingly rounded
+      const converted = this.currencyStore.convert(payRate);
+      return String(Number(converted.toFixed(this.currencyStore.fractionDigits + 2)));
+    },
+
+    onPayRateInput(event: Event) {
+      const value = (event.target as HTMLInputElement).value;
+      this.payRateDraft = value;
+
+      if (value.trim() === '') {
+        // Same as clearing the box with v-model before
+        this.formData.payRate = '' as unknown as number;
+        return;
+      }
+
+      const payRate = this.currencyStore.isConverting
+        ? amountFromConverted(Number(value), this.conversionRate, this.hourlyRateTolerance)
+        : Number(value);
+
+      if (payRate !== undefined && !Number.isNaN(payRate)) {
+        this.formData.payRate = payRate;
+      }
+    },
+
+    onPayRateBlur() {
+      this.payRateDraft = null;
+    },
+
+    // Picked from the saved pay rates: use the exact saved value, not a converted round trip
+    selectPayRate(label: string) {
+      const option = this.payRateOptions.find((payRate) => payRate.label === label);
+      if (!option) return;
+
+      this.payRateDraft = null;
+      this.formData.payRate = option.value;
+    },
+
+    deletePayRate(label: string) {
+      const option = this.payRateOptions.find((payRate) => payRate.label === label);
+      if (!option || !this.formData.workplace) return;
+
+      this.workInfosStore
+        .delete(this.formData.workplace, option.value)
+        .catch((error) => alert('Failed to delete pay rate \n' + error.message));
+    },
+
+    // Typing a total works out the pay rate for the current billable time
+    onTotalInput(event: Event) {
+      const value = (event.target as HTMLInputElement).value;
+      this.totalDraft = value;
+
+      if (value.trim() === '') return;
+
+      const payRate = payRateFromTotal(
+        Number(value),
+        this.billableMinutes,
+        this.conversionRate,
+        this.currencyStore.tolerance
+      );
+      if (payRate !== undefined) {
+        this.formData.payRate = payRate;
+      }
+    },
+
+    onTotalBlur() {
+      this.totalDraft = null;
+    },
+
     addUnpaidBreak() {
       if (!this.formData.unpaidBreaks) {
         this.formData.unpaidBreaks = [] as Duration[];
@@ -380,6 +576,13 @@ export default {
   watch: {
     shift() {
       this.resetForm();
+    },
+
+    // If the currency or rate changes mid-edit (e.g. rates finish loading), a half-typed number would
+    // keep showing the old currency's amount. Drop the drafts so both boxes show what will be saved.
+    conversionKey() {
+      this.payRateDraft = null;
+      this.totalDraft = null;
     }
   }
 };
@@ -431,17 +634,17 @@ export default {
           </InputLabel>
 
           <InputLabel label-text="Pay Rate" for-id="pay-rate" :loading="workInfosStore.status === STATUS.Loading">
-            <ComboBox :value="formData.payRate ? formData.payRate.toString() : ''"
-              @update:value="(newValue: number | undefined) => (formData.payRate = Number(newValue))" :list="formData.workplace && workInfosStore.workInfos.get(formData.workplace)?.payRates
-                ? Array.from(workInfosStore.workInfos.get(formData.workplace)?.payRates ?? []).map((pr) => pr.toString())
-                : []
-                "
-              @delete-item="payRate => formData.workplace ? workInfosStore.delete(formData.workplace, Number(payRate)).catch((error) => alert('Failed to delete pay rate \n' + error.message)) : null"
-              deletable>
-              <input type="number" id="pay-rate" name="payRate" placeholder="e.g. 23.23" v-model="formData.payRate"
-                step="0.01" required />
+            <ComboBox :value="payRateInputValue" @update:value="selectPayRate"
+              :list="payRateOptions.map((payRate) => payRate.label)" @delete-item="deletePayRate" deletable>
+              <div :class="['money-input', { 'symbol-after': symbolAfter }]">
+                <span class="currency-symbol" aria-hidden="true">{{ formCurrencySymbol }}</span>
+                <input type="number" id="pay-rate" name="payRate" placeholder="e.g. 23.23" :value="payRateInputValue"
+                  @input="onPayRateInput" @blur="onPayRateBlur"
+                  :aria-label="`Pay rate in ${currencyStore.activeCurrency} per hour`" step="any" min="0" required />
+              </div>
             </ComboBox>
           </InputLabel>
+
         </div>
       </div>
 
@@ -518,6 +721,25 @@ export default {
 
           <!-- Add unpaid break -->
           <button type="button" class="add-item-btn" @click="addUnpaidBreak">+</button>
+        </div>
+      </div>
+
+      <!-- ── Total ── -->
+      <!-- Bound to Pay Rate: Total = Pay Rate × hours after unpaid breaks; editing Total works out the Pay Rate -->
+      <div class="form-section" id="total">
+        <label for="total-pay">Total</label>
+
+        <div class="content">
+          <div :class="['money-input', { 'symbol-after': symbolAfter, disabled: billableMinutes === 0 }]">
+            <span class="currency-symbol" aria-hidden="true">{{ formCurrencySymbol }}</span>
+            <input type="number" id="total-pay" :value="totalInputValue" @input="onTotalInput" @blur="onTotalBlur"
+              :placeholder="billableMinutes === 0 ? 'Set times first' : 'e.g. 185.84'" :disabled="billableMinutes === 0"
+              :title="billableMinutes === 0 ? 'Set the start and end time first' : 'Total pay after unpaid breaks. Changing it updates the pay rate.'"
+              :aria-label="`Total pay in ${currencyStore.activeCurrency}`" step="any" min="0" inputmode="decimal" />
+          </div>
+
+          <small v-if="totalBreakdown" class="field-hint total-breakdown">{{ totalBreakdown }}</small>
+          <small v-if="savedTotalHint" class="field-hint saved-total">{{ savedTotalHint }}</small>
         </div>
       </div>
 
@@ -711,6 +933,70 @@ form {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: calc(var(--padding) * 1.2);
+}
+
+/* ── Total ── */
+#total .content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.money-input {
+  display: flex;
+  align-items: stretch;
+  border-radius: var(--border-radius);
+}
+
+.money-input:focus-within {
+  outline: 2px solid var(--primary-color);
+}
+
+.money-input .currency-symbol {
+  display: flex;
+  align-items: center;
+  padding: 0 0 0 var(--padding);
+  font-size: large;
+  color: var(--text-color-faded);
+  background-color: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.07));
+  border-bottom: 2px solid var(--primary-color);
+  border-radius: var(--border-radius) 0 0 var(--border-radius);
+  user-select: none;
+}
+
+.money-input input {
+  min-width: 0;
+  padding-left: var(--padding-small);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.money-input input:focus {
+  outline: none;
+}
+
+/* Symbol after the amount: "20 $" */
+.money-input.symbol-after .currency-symbol {
+  order: 1;
+  padding: 0 var(--padding) 0 0;
+  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+}
+
+.money-input.symbol-after input {
+  text-align: right;
+  padding-left: var(--padding);
+  padding-right: var(--padding-small);
+  border-radius: var(--border-radius) 0 0 var(--border-radius);
+}
+
+.money-input.disabled {
+  opacity: 0.6;
+}
+
+.field-hint {
+  display: block;
+  font-size: small;
+  color: var(--text-color-faded);
 }
 
 /* ── Schedule ── */

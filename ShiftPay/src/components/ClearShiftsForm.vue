@@ -4,7 +4,8 @@ import { mapStores } from 'pinia';
 import ButtonConfirm from './ButtonConfirm.vue';
 
 import { useShiftsStore } from '@/stores/shiftsStore';
-import { currencyFormat, toTimeStr } from '@/utils';
+import { useCurrencyStore } from '@/stores/currencyStore';
+import { toTimeStr } from '@/utils';
 import type Shift from '@/models/Shift';
 
 export default {
@@ -31,7 +32,7 @@ export default {
   },
 
   computed: {
-    ...mapStores(useShiftsStore),
+    ...mapStores(useShiftsStore, useCurrencyStore),
 
     dayStart(): Date {
       const d = new Date(this.selectedDate);
@@ -113,7 +114,6 @@ export default {
   },
 
   methods: {
-    currencyFormat,
     toTimeStr,
 
     showMore() {
@@ -218,7 +218,7 @@ export default {
             <span class="shift-time">
               {{ formatShiftDate(shift.startTime) }}, {{ toTimeStr(shift.startTime) }} – {{ toTimeStr(shift.endTime) }}
             </span>
-            <span class="shift-income">{{ currencyFormat(shift.income) }}</span>
+            <span class="shift-income">{{ currencyStore.format(shift.income) }}</span>
           </li>
           <li v-if="sortedSelectedShifts.length > visibleShiftCount" class="shift-item more">
             <button type="button" class="load-more-btn" @click="showMore">

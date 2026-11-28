@@ -74,8 +74,11 @@ export const useShiftsStore = defineStore('shifts', {
 
     stats(): (startTime: Date, endTime: Date) => Stats {
       return (startTime: Date, endTime: Date) => {
-        // Filter shifts that end within the range
-        const shiftsInRange = this.range(startTime, endTime).filter((shift) => shift.endTime <= endTime);
+        // Count each shift once, in the range where it ends: (startTime, endTime].
+        // A shift ending exactly at midnight belongs to the day before, not to both days.
+        const shiftsInRange = this.range(startTime, endTime).filter(
+          (shift) => shift.endTime > startTime && shift.endTime <= endTime
+        );
 
         return {
           income: {
