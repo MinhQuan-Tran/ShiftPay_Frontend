@@ -92,6 +92,30 @@ async function createRequest(resource: ApiResource, options: RequestOptions) {
   }
 }
 
+// Free, keyless exchange rate service (central bank reference rates, updated daily)
+const EXCHANGE_RATES_URL = 'https://api.frankfurter.dev/v2/rates';
+
+/**
+ * GET public JSON from a third-party service.
+ * Kept separate from `createRequest` so the user's access token is never sent to another host.
+ */
+async function fetchPublicJson(url: string): Promise<unknown> {
+  try {
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+
+    if (!res.ok) {
+      throw new Error(`${res.status} ${res.statusText}`);
+    }
+
+    return await res.json();
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error('Network error: Please check your internet connection', { cause: error });
+    }
+    throw new Error(`Request to ${new URL(url).host} failed`, { cause: error });
+  }
+}
+
 const api = {
   shifts: {
     async fetch(id?: string, params?: QueryParams) {
@@ -153,6 +177,13 @@ const api = {
     async delete(id: string, payRate?: number) {
       const queryParams: QueryParams | undefined = payRate !== undefined ? { payRate } : undefined;
       return createRequest(`workInfos/${encodeURIComponent(id)}`, { method: 'DELETE', queryParams });
+    }
+  },
+
+  exchangeRates: {
+    /** Latest reference rates from Frankfurter (frankfurter.dev): one row per currency, relative to `base` */
+    async latest(base: string) {
+      return fetchPublicJson(`${EXCHANGE_RATES_URL}?base=${encodeURIComponent(base)}`);
     }
   },
 

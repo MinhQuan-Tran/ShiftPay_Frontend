@@ -197,5 +197,16 @@
       "[Fix] End Shift button not switching back to Start Shift after clocking out",
       "[Fix - Beta] Uploading local data to an online account failing when workplaces are saved"
     ]
+  },
+  {
+    "version": "0.4.7",
+    "date": "2026-11-28T00:00:00+1100",
+    "changes": [
+      "[Feature] Total field in the shift form: enter the total pay to work out the pay rate",
+      "[Feature] Option to show each day's income on the calendar (menu > Show Day Income)",
+      "[Feature] Show and enter amounts in another currency (menu > Currency), using daily exchange rates. Shifts are still saved in AUD",
+      "[Feature] Choose whether the currency symbol goes before or after amounts (menu > Symbol Position)",
+      "[Fix] Shifts ending exactly at midnight counted in two days or weeks"
+    ]
   }
 ]

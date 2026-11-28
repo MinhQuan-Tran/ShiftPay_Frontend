@@ -11,6 +11,7 @@ import { useShiftsStore } from '@/stores/shiftsStore';
 import { useShiftTemplatesStore } from '@/stores/shiftTemplatesStore';
 import { useWorkInfosStore } from '@/stores/workInfosStore';
 import { useShiftSessionStore } from '@/stores/shiftSessionStore';
+import { useCurrencyStore } from '@/stores/currencyStore';
 
 import MainMenu from '@/components/MainMenu.vue';
 import WeekSchedule from '@/components/WeekSchedule.vue';
@@ -28,7 +29,8 @@ export default {
     return {
       selectedRange: { start, end } as DateRange,
       menuOpened: false,
-      showLegends: localStorage.getItem('showLegends') !== 'false'
+      showLegends: localStorage.getItem('showLegends') !== 'false',
+      showDayIncome: localStorage.getItem('showDayIncome') === 'true' // Off unless the user turns it on
     };
   },
 
@@ -86,6 +88,11 @@ export default {
       localStorage.setItem('showLegends', String(this.showLegends));
     },
 
+    toggleDayIncome() {
+      this.showDayIncome = !this.showDayIncome;
+      localStorage.setItem('showDayIncome', String(this.showDayIncome));
+    },
+
     async handleLogin() {
       await this.authStore.login();
 
@@ -116,7 +123,7 @@ export default {
   },
 
   computed: {
-    ...mapStores(useAuthStore, useShiftsStore, useShiftTemplatesStore, useWorkInfosStore, useShiftSessionStore),
+    ...mapStores(useAuthStore, useShiftsStore, useShiftTemplatesStore, useWorkInfosStore, useShiftSessionStore, useCurrencyStore),
   },
 
   components: {
@@ -135,12 +142,15 @@ export default {
     this.shiftTemplatesStore.enableAutoPersist();
     this.workInfosStore.enableAutoPersist();
     this.shiftSessionStore.enableAutoPersist();
+    this.currencyStore.enableAutoPersist();
 
     // Fetch initial data
     this.shiftsStore.fetch();
     this.shiftTemplatesStore.fetch();
     this.workInfosStore.fetch();
     this.shiftSessionStore.fetch();
+    // Not fatal: without exchange rates amounts are shown in the pay currency
+    this.currencyStore.fetch().catch((error) => console.error('Currency setup failed:', error));
 
     // Show changelog if app version is different (skip if tutorial not completed)
     if (localStorage.getItem('tutorialCompleted') === 'true') {
@@ -187,9 +197,10 @@ export default {
       <div class="bar"></div>
       <div class="bar"></div>
       <Transition name="menu-fade">
-        <MainMenu v-if="menuOpened" ref="mainMenu" :show-legends="showLegends" @login="handleLogin"
+        <MainMenu v-if="menuOpened" ref="mainMenu" :show-legends="showLegends" :show-day-income="showDayIncome"
+          @login="handleLogin"
           @import="showImportDialog" @tutorial="startTutorial" @changelog="showChangelogDialog"
-          @toggle-legends="toggleLegends" />
+          @toggle-legends="toggleLegends" @toggle-day-income="toggleDayIncome" />
       </Transition>
     </div>
   </header>
@@ -197,7 +208,7 @@ export default {
   <SyncDataDialog ref="sync-dialog" @complete="handleSyncComplete" />
   <ImportDataDialog ref="import-dialog" />
 
-  <WeekSchedule v-model:selected-range="selectedRange" :show-legends="showLegends" />
+  <WeekSchedule v-model:selected-range="selectedRange" :show-legends="showLegends" :show-day-income="showDayIncome" />
   <hr />
   <DaySchedule :selected-range="selectedRange" />
 

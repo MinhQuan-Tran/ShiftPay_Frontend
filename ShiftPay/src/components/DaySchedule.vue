@@ -149,6 +149,20 @@ export default {
     currencyFormat,
     toTimeStr,
 
+    // The Start/End Shift button only shows when today is selected and the shift session isn't loading.
+    // It sits on top of the range label, which is hidden while the button shows.
+    // A method rather than computed so "today" is checked on every render instead of being cached.
+    isCheckInOutShown(): boolean {
+      const today = new Date().setHours(0, 0, 0, 0);
+      const tomorrow = new Date(new Date().setDate(new Date().getDate() + 1)).setHours(0, 0, 0, 0);
+
+      return (
+        this.selectedRange.start.getTime() === today &&
+        this.selectedRange.end.getTime() === tomorrow &&
+        this.shiftSessionStore.status !== STATUS.Loading
+      );
+    },
+
     handleEditShift(shift: Shift) {
       this.selectedShift = shift;
       this.shiftFormData = {
@@ -364,16 +378,12 @@ export default {
       <button @click="($refs.clearShiftsDialog as any).showModal()" class="danger" id="clear-btn">Clear</button>
 
       <div class="action-middle">
-        <span id="selected-range-label" aria-live="polite">
+        <span id="selected-range-label" aria-live="polite" :style="{ opacity: isCheckInOutShown() ? '0' : '1' }">
           {{ selectedRangeLabel }}
         </span>
 
         <Transition>
-          <button v-if="
-            selectedRange.start.getTime() === new Date().setHours(0, 0, 0, 0) && // Only show the check in/out button if the selected date is today
-            selectedRange.end.getTime() === new Date(new Date().setDate(new Date().getDate() + 1)).setHours(0, 0, 0, 0) &&
-            shiftSessionStore.status !== STATUS.Loading // Don't show the button while loading the shift session
-          " @click="handleCheckInOut" id="check-in-out-btn"
+          <button v-if="isCheckInOutShown()" @click="handleCheckInOut" id="check-in-out-btn"
             :class="{ primary: !shiftSessionStore.isInProgress, warning: shiftSessionStore.isInProgress }">
             {{ shiftSessionStore.isInProgress ? 'End' : 'Start' }} Shift
           </button>

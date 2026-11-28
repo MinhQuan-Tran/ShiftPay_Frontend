@@ -30,6 +30,9 @@ export type DateRange = {
   end: Date;
 };
 
+/** Where the currency symbol goes next to an amount: "$20" or "20$" */
+export type SymbolPosition = 'before' | 'after';
+
 export const STATUS = { Ready: 'Ready', Loading: 'Loading', Error: 'Error' } as const;
 export type Status = (typeof STATUS)[keyof typeof STATUS];
 
