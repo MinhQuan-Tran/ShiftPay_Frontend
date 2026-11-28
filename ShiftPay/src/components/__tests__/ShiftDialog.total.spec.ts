@@ -205,6 +205,59 @@ describe('ShiftDialog — Total field', () => {
     wrapper.unmount();
   });
 
+  it('keeps enough precision for a converted hourly rate over a long shift', async () => {
+    useCurrencyStore().$patch({
+      displayCurrency: 'USD',
+      exchangeRates: { base: 'AUD', date: '2026-11-27', fetchedAt: Date.now(), rates: { USD: 0.66401 } }
+    });
+
+    const wrapper = mountDialog(pinia, {
+      startTime: new Date(2026, 10, 28, 8, 0),
+      endTime: new Date(2026, 10, 28, 20, 0) // 12 hours
+    });
+    await flushPromises();
+
+    await wrapper.get('#pay-rate').setValue('20.10');
+    await wrapper.get('#pay-rate').trigger('blur');
+
+    expect(wrapper.get<HTMLInputElement>('#total-pay').element.value).toBe('241.20');
+    expect(wrapper.get<HTMLInputElement>('#pay-rate').element.value).toBe('20.1');
+
+    wrapper.unmount();
+  });
+
+  it('shows the converted amounts if rates arrive while typing', async () => {
+    // A USD preference, but no rates yet: the form falls back to AUD
+    const currency = useCurrencyStore();
+    currency.$patch({ displayCurrency: 'USD', exchangeRates: null });
+
+    const wrapper = mountDialog(pinia, { ...sevenHoursTwenty });
+    await flushPromises();
+
+    const payRate = wrapper.get<HTMLInputElement>('#pay-rate');
+    await payRate.setValue('30'); // 30 AUD/h, still focused (no blur)
+    expect(payRate.attributes('aria-label')).toBe('Pay rate in AUD per hour');
+
+    currency.$patch({
+      exchangeRates: { base: 'AUD', date: '2026-11-27', fetchedAt: Date.now(), rates: { USD: 0.5 } }
+    });
+    await flushPromises();
+
+    // Same saved amount, now shown in USD
+    expect(payRate.attributes('aria-label')).toBe('Pay rate in USD per hour');
+    expect(payRate.element.value).toBe('15');
+    expect(wrapper.get<HTMLInputElement>('#total-pay').element.value).toBe('110.00');
+
+    // A half-typed total is reconciled too
+    const total = wrapper.get<HTMLInputElement>('#total-pay');
+    await total.setValue('100'); // USD
+    currency.$patch({ displayCurrency: 'AUD' });
+    await flushPromises();
+    expect(total.element.value).toBe('200.00');
+
+    wrapper.unmount();
+  });
+
   it('keeps whole-unit currencies exact, e.g. VND', async () => {
     useCurrencyStore().$patch({
       displayCurrency: 'VND',

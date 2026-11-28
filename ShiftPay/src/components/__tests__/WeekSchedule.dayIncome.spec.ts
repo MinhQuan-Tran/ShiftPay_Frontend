@@ -112,6 +112,35 @@ describe('WeekSchedule — income on calendar days', () => {
     expect(wrapper.get('.monthly .stat').text()).toBe(currencyFormat(320, 'AUD', {}, 'after'));
   });
 
+  it('shows small incomes that are visible in a whole-unit currency like VND', async () => {
+    const shifts = useShiftsStore();
+    // 4h × A$0.001 = A$0.004: under a cent, but ₫69 at 17,165
+    shifts.shifts = [
+      new Shift({
+        workplace: 'A',
+        payRate: 0.001,
+        startTime: new Date(2026, 10, 2, 9),
+        endTime: new Date(2026, 10, 2, 13)
+      })
+    ];
+    const start = new Date(2026, 10, 28);
+    const end = new Date(2026, 10, 29);
+    const wrapper = mount(WeekSchedule, {
+      props: { selectedRange: { start, end }, showDayIncome: true },
+      global: { plugins: [pinia] }
+    });
+
+    expect(dayCell(wrapper, 2).find('.day-income').exists()).toBe(false); // AUD: rounds to $0.00
+
+    useCurrencyStore().$patch({
+      displayCurrency: 'VND',
+      exchangeRates: { base: 'AUD', date: '2026-11-27', fetchedAt: Date.now(), rates: { VND: 17165 } }
+    });
+    await wrapper.vm.$nextTick();
+
+    expect(dayCell(wrapper, 2).find('.day-income').text()).toBe(compactCurrencyFormat(0.004 * 17165, 'VND', 'before'));
+  });
+
   it('follows the display currency', async () => {
     const wrapper = mountWithShifts();
     useCurrencyStore().$patch({

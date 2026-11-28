@@ -190,10 +190,14 @@ export const useCurrencyStore = defineStore('currency', {
       }
     },
 
-    /** Download the latest rates unless the cached ones are still fresh */
+    /** Download the latest rates unless the cached ones are still fresh and include the picked currency */
     async refreshRates(force = false): Promise<void> {
       const cached = this.exchangeRates;
-      if (!force && cached && Date.now() - cached.fetchedAt < RATES_MAX_AGE_MS) return;
+      const isFresh = cached !== null && Date.now() - cached.fetchedAt < RATES_MAX_AGE_MS;
+      const hasPickedCurrency =
+        this.displayCurrency === BASE_CURRENCY || cached?.rates[this.displayCurrency] !== undefined;
+
+      if (!force && isFresh && hasPickedCurrency) return;
 
       await withStatus(this, async () => {
         try {

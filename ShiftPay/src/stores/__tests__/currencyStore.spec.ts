@@ -99,6 +99,27 @@ describe('currencyStore', () => {
     expect(store.convert(10)).toBeCloseTo(6);
   });
 
+  it('refreshes fresh cached rates that are missing the picked currency', async () => {
+    localStorage.setItem(
+      'exchangeRates',
+      JSON.stringify({ base: 'AUD', date: '2026-11-27', fetchedAt: NOW - 60_000, rates: { EUR: 0.6 } })
+    );
+    latest.mockResolvedValue(RESPONSE);
+
+    const store = useCurrencyStore();
+    await store.fetch();
+    expect(latest).not.toHaveBeenCalled(); // AUD picked: fresh cache is fine
+
+    await store.setDisplayCurrency('USD');
+    expect(latest).toHaveBeenCalledTimes(1);
+    expect(store.isConverting).toBe(true);
+    expect(store.convert(100)).toBeCloseTo(66.401);
+
+    // USD is now cached and fresh: no second request
+    await store.refreshRates();
+    expect(latest).toHaveBeenCalledTimes(1);
+  });
+
   it('refreshes stale rates, and keeps the old ones if the refresh fails', async () => {
     localStorage.setItem('displayCurrency', 'EUR');
     localStorage.setItem(

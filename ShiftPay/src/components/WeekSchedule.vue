@@ -187,6 +187,13 @@ export default {
   },
 
   methods: {
+    // Whether an income (stored in AUD) is at least the smallest unit of the currency it's shown in,
+    // e.g. 1 cent in USD, 1 đồng in VND. Checked after converting, so small amounts still show in VND.
+    isVisibleIncome(amount: number): boolean {
+      const factor = 10 ** this.currencyStore.fractionDigits;
+      return Math.round(this.currencyStore.convert(amount) * factor) > 0;
+    },
+
     goToNextMonth() {
       this.slideDirection = 1;
       this.monthChange++;
@@ -321,7 +328,7 @@ export default {
             {{ day.dayStartTime.getDate() }}
           </div>
 
-          <span v-if="showDayIncome && Math.round(dayIncomes[dayIndex] * 100) > 0" class="day-income"
+          <span v-if="showDayIncome && isVisibleIncome(dayIncomes[dayIndex])" class="day-income"
             :title="`Income: ${currencyStore.format(dayIncomes[dayIndex])}`">
             {{ currencyStore.formatCompact(dayIncomes[dayIndex]) }}
           </span>

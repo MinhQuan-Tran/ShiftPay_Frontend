@@ -120,6 +120,17 @@ export default {
       return this.currencyStore.convert(1);
     },
 
+    // An hourly rate's rounding error is multiplied by the shift's hours, so keep enough precision
+    // for the total to round correctly even for a full day (or the current shift, if longer).
+    hourlyRateTolerance(): number {
+      return this.currencyStore.tolerance / Math.max(24, this.billableMinutes / 60);
+    },
+
+    // Changes when amounts start being shown in another currency or at another rate
+    conversionKey(): string {
+      return `${this.currencyStore.activeCurrency}:${this.conversionRate}`;
+    },
+
     // e.g. "$" for AUD in Australia, "USD", "₫"
     formCurrencySymbol(): string {
       return this.currencyStore.symbol;
@@ -494,7 +505,7 @@ export default {
       }
 
       const payRate = this.currencyStore.isConverting
-        ? amountFromConverted(Number(value), this.conversionRate, this.currencyStore.tolerance)
+        ? amountFromConverted(Number(value), this.conversionRate, this.hourlyRateTolerance)
         : Number(value);
 
       if (payRate !== undefined && !Number.isNaN(payRate)) {
@@ -565,6 +576,13 @@ export default {
   watch: {
     shift() {
       this.resetForm();
+    },
+
+    // If the currency or rate changes mid-edit (e.g. rates finish loading), a half-typed number would
+    // keep showing the old currency's amount. Drop the drafts so both boxes show what will be saved.
+    conversionKey() {
+      this.payRateDraft = null;
+      this.totalDraft = null;
     }
   }
 };
